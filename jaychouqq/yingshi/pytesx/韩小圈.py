@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+韩小圈 / 韩剧TV
+列表: /api/series/index （offset 分页）
+详情: /api/series/detail
+播放: /api/play/playurl（多清晰度/多主机）；失败回退 srcUrl 解析
+"""
 import base64
 import hashlib
 import json
 import random
 import re
 import string
+import subprocess
 import sys
 import time
 import urllib.parse
@@ -46,6 +53,7 @@ class Spider(BaseSpider):
         self.uk_iv = b'd3w8hf94fidk38lk'
         self.response_secret = '34F9Q53w/HJW8E6Q'
         self.uid = ''
+        self.page_size = 16
         self.channels = {
             '1': {'name': '韩剧'},
             '2': {'name': '综艺'},
@@ -79,18 +87,40 @@ class Spider(BaseSpider):
         return hashlib.md5(str(s).encode('utf-8')).hexdigest()
 
     def _aes_cbc(self, data, key, iv, encrypt=True):
-        if not AES:
-            return b'' if encrypt else ''
-        cipher = AES.new(key[:16], AES.MODE_CBC, iv[:16])
-        if encrypt:
-            raw = pad(data if isinstance(data, bytes) else str(data).encode('utf-8'), 16)
-            return cipher.encrypt(raw)
-        raw = data if isinstance(data, bytes) else base64.b64decode(data)
-        pt = cipher.decrypt(raw)
+        key = key[:16] if isinstance(key, (bytes, bytearray)) else str(key).encode('utf-8')[:16]
+        iv = iv[:16] if isinstance(iv, (bytes, bytearray)) else str(iv).encode('utf-8')[:16]
+        if AES:
+            cipher = AES.new(key, AES.MODE_CBC, iv)
+            if encrypt:
+                raw = pad(data if isinstance(data, bytes) else str(data).encode('utf-8'), 16)
+                return cipher.encrypt(raw)
+            raw = data if isinstance(data, bytes) else base64.b64decode(data)
+            pt = cipher.decrypt(raw)
+            try:
+                return unpad(pt, 16).decode('utf-8', 'ignore')
+            except Exception:
+                return pt.rstrip(b'\x00').decode('utf-8', 'ignore')
         try:
-            return unpad(pt, 16).decode('utf-8', 'ignore')
+            if encrypt:
+                raw = data if isinstance(data, bytes) else str(data).encode('utf-8')
+                pad_len = 16 - (len(raw) % 16)
+                padded = raw + bytes([pad_len] * pad_len)
+                r = subprocess.run(
+                    ['openssl', 'enc', '-aes-128-cbc', '-K', key.hex(), '-iv', iv.hex()],
+                    input=padded, capture_output=True, timeout=5,
+                )
+                return r.stdout if r.returncode == 0 else b''
+            raw = data if isinstance(data, bytes) else base64.b64decode(data)
+            r = subprocess.run(
+                ['openssl', 'enc', '-d', '-aes-128-cbc', '-K', key.hex(), '-iv', iv.hex()],
+                input=raw, capture_output=True, timeout=5,
+            )
+            pt = r.stdout or b''
+            if pt and 1 <= pt[-1] <= 16:
+                pt = pt[:-pt[-1]]
+            return pt.decode('utf-8', 'ignore')
         except Exception:
-            return pt.rstrip(b'\x00').decode('utf-8', 'ignore')
+            return b'' if encrypt else ''
 
     def _headers(self):
         uid = self.uid or self._uid()
@@ -102,28 +132,26 @@ class Spider(BaseSpider):
             'vn': self.vn,
             'vc': self.vc,
             'Accept': 'application/json, text/plain, */*',
-            'Accept-Encoding': 'gzip',
             'Connection': 'Keep-Alive',
         }
-        if AES:
-            try:
-                uk = base64.b64encode(self._aes_cbc(uid, self.uk_key, self.uk_iv, True)).decode('ascii')
-                mix = self._md5(uid)
-                payload = json.dumps({
-                    'uid': uid,
-                    'model': 'Redmi Note 12',
-                    'maker': 'Xiaomi',
-                    'osv': '14',
-                    'ts': int(time.time() * 1000),
-                }, separators=(',', ':'), ensure_ascii=False)
-                sign = base64.b64encode(
-                    self._aes_cbc(payload, mix[:16].encode('utf-8'), mix[16:32].encode('utf-8'), True)
-                ).decode('ascii')
-                headers['uk'] = uk
-                headers['sign'] = sign
-                headers['said'] = self._md5(uid)[:16]
-            except Exception:
-                pass
+        try:
+            uk = base64.b64encode(self._aes_cbc(uid, self.uk_key, self.uk_iv, True)).decode('ascii')
+            mix = self._md5(uid)
+            payload = json.dumps({
+                'uid': uid,
+                'model': 'Redmi Note 12',
+                'maker': 'Xiaomi',
+                'osv': '14',
+                'ts': int(time.time() * 1000),
+            }, separators=(',', ':'), ensure_ascii=False)
+            sign = base64.b64encode(
+                self._aes_cbc(payload, mix[:16].encode('utf-8'), mix[16:32].encode('utf-8'), True)
+            ).decode('ascii')
+            headers['uk'] = uk
+            headers['sign'] = sign
+            headers['said'] = self._md5(uid)[:16]
+        except Exception:
+            pass
         return headers
 
     def _decode_body(self, obj):
@@ -165,9 +193,11 @@ class Spider(BaseSpider):
             class R:
                 def __init__(self, raw):
                     self.content = raw
-                    self.text = raw.decode('utf-8', 'ignore')
+                    self.text = raw.decode('utf-8', 'ignore') if raw else ''
 
                 def json(self):
+                    if not self.text:
+                        return {}
                     return json.loads(self.text)
 
             return R(raw)
@@ -183,40 +213,69 @@ class Spider(BaseSpider):
                 return self.api_get(path, params, self.appHost2)
             return {}
         try:
-            return self._decode_body(resp.json())
+            text = getattr(resp, 'text', '') or ''
+            if not text.strip():
+                if host != self.appHost2:
+                    return self.api_get(path, params, self.appHost2)
+                return {}
+            try:
+                return self._decode_body(resp.json())
+            except Exception:
+                return self._decode_body(text)
         except Exception:
-            return self._decode_body(getattr(resp, 'text', ''))
+            return {}
 
     def _pick_list(self, payload):
-        d = payload.get('data', payload) if isinstance(payload, dict) else payload
-        if isinstance(d, list):
-            return d
-        if not isinstance(d, dict):
-            return []
-        for k in ('list', 'items', 'series', 'result', 'records', 'searchList', 'data'):
-            v = d.get(k)
+        if not isinstance(payload, dict):
+            return payload if isinstance(payload, list) else []
+        for k in ('seriesList', 'list', 'items', 'series', 'result', 'records', 'searchList', 'playItems', 'data'):
+            v = payload.get(k)
             if isinstance(v, list):
                 return v
-            if isinstance(v, dict) and isinstance(v.get('list'), list):
-                return v.get('list')
+            if isinstance(v, dict):
+                for kk in ('list', 'seriesList', 'items'):
+                    if isinstance(v.get(kk), list):
+                        return v.get(kk)
+        d = payload.get('data')
+        if isinstance(d, list):
+            return d
+        if isinstance(d, dict):
+            return self._pick_list(d)
         return []
 
     def _pic(self, item):
+        if not isinstance(item, dict):
+            return ''
         img = item.get('image') or {}
         if isinstance(img, dict):
-            return img.get('thumb') or img.get('poster') or img.get('url') or ''
-        return item.get('thumb') or item.get('poster') or item.get('cover') or img or ''
+            u = img.get('thumb') or img.get('poster') or img.get('url') or ''
+            if u:
+                return u
+        for k in ('thumb', 'poster', 'posterThumb', 'cover', 'pic'):
+            u = item.get(k)
+            if isinstance(u, str) and u.startswith('http'):
+                return u
+        return ''
 
     def _map(self, item):
-        if not item:
+        if not item or not isinstance(item, dict):
             return None
         sid = item.get('sid') or item.get('seriesId') or item.get('id') or item.get('series_id')
         if not sid:
             return None
         name = item.get('name') or item.get('title') or item.get('seriesName') or str(sid)
-        remarks = item.get('upInfo') or item.get('updateInfo') or item.get('corner') or item.get('score') or ''
-        if item.get('finish') or item.get('isFinish'):
-            remarks = remarks or '完结'
+        remarks = (
+            item.get('upInfo')
+            or item.get('updateInfo')
+            or item.get('corner')
+            or item.get('shorthand')
+            or item.get('score')
+            or ''
+        )
+        if item.get('isFinished') or item.get('finish') or item.get('isFinish'):
+            remarks = (str(remarks) + ' 完结').strip() if remarks else '完结'
+        elif item.get('count'):
+            remarks = (str(remarks) + ' 共%s集' % item.get('count')).strip() if remarks else '共%s集' % item.get('count')
         return {
             'vod_id': str(sid),
             'vod_name': name,
@@ -231,19 +290,13 @@ class Spider(BaseSpider):
     def homeVideoContent(self):
         videos = []
         try:
-            js = self.api_get('/api/search/s5', {
-                'k': '', 'srefer': 'home', 'type': '1', 'page': '1'
+            js = self.api_get('/api/series/index', {
+                'type': '1', 'offset': '0', 'size': str(self.page_size),
             })
             for item in self._pick_list(js)[:24]:
                 v = self._map(item)
                 if v:
                     videos.append(v)
-            if not videos:
-                js = self.api_get('/api/series/index', {'type': '1', 'page': '1', 'size': '24'})
-                for item in self._pick_list(js)[:24]:
-                    v = self._map(item)
-                    if v:
-                        videos.append(v)
         except Exception as e:
             print('获取首页视频失败: %s' % e)
         return {'list': videos}
@@ -251,31 +304,38 @@ class Spider(BaseSpider):
     def categoryContent(self, tid, pg, filter, extend):
         pg = int(pg or 1)
         cate = str(tid or '1')
+        offset = (pg - 1) * self.page_size
         videos = []
+        more = False
         try:
-            js = self.api_get('/api/search/s5', {
-                'k': '', 'srefer': 'cate', 'type': cate, 'page': str(pg)
+            js = self.api_get('/api/series/index', {
+                'type': cate,
+                'category': cate,
+                'offset': str(offset),
+                'size': str(self.page_size),
             })
             for item in self._pick_list(js):
                 v = self._map(item)
                 if v:
                     videos.append(v)
+            more = bool(js.get('more')) or len(videos) >= self.page_size - 2
             if not videos:
-                js = self.api_get('/api/series/index', {
-                    'type': cate, 'page': str(pg), 'size': '30'
+                js = self.api_get('/api/search/s5', {
+                    'k': '', 'srefer': 'cate', 'type': cate, 'page': str(pg),
                 })
                 for item in self._pick_list(js):
                     v = self._map(item)
                     if v:
                         videos.append(v)
+                more = len(videos) >= 10
         except Exception as e:
             print('获取分类内容失败: %s' % e)
         return {
             'list': videos,
             'page': pg,
-            'pagecount': pg + 1 if len(videos) >= 20 else pg,
-            'limit': 30,
-            'total': 9999,
+            'pagecount': pg + 1 if more else pg,
+            'limit': self.page_size,
+            'total': 9999 if more else (offset + len(videos)),
         }
 
     def searchContent(self, key, quick, pg=1):
@@ -286,58 +346,91 @@ class Spider(BaseSpider):
         videos = []
         try:
             js = self.api_get('/api/search/s5', {
-                'k': key, 'srefer': 'search_input', 'type': '0', 'page': str(pg)
+                'k': key, 'srefer': 'search_input', 'type': '0', 'page': str(pg),
             })
             for item in self._pick_list(js):
                 v = self._map(item)
                 if v:
                     videos.append(v)
+            if not videos and pg == 1:
+                js = self.api_get('/api/series/index', {
+                    'keyword': key, 'offset': '0', 'size': str(self.page_size),
+                })
+                for item in self._pick_list(js):
+                    name = (item.get('name') or '') if isinstance(item, dict) else ''
+                    if key in name:
+                        v = self._map(item)
+                        if v:
+                            videos.append(v)
         except Exception as e:
             print('搜索失败: %s' % e)
         return {
             'list': videos,
             'page': pg,
-            'pagecount': pg + 1 if len(videos) >= 20 else pg,
+            'pagecount': pg + 1 if len(videos) >= 10 else pg,
             'limit': 20,
             'total': len(videos),
         }
 
     def _ep_name(self, ep, idx):
-        name = str((ep or {}).get('name') or (ep or {}).get('title') or (ep or {}).get('alias') or '')
+        name = str((ep or {}).get('title') or (ep or {}).get('name') or (ep or {}).get('alias') or '')
         if name and not re.match(r'^\d+$', name):
             return name
         no = (ep or {}).get('serialNo') or (ep or {}).get('episode') or (ep or {}).get('num') or idx
         return '第%s集' % no
 
     def _episodes(self, sid):
-        episodes = []
+        drama, episodes = {}, []
         js = self.api_get('/api/series/detail', {'sid': sid})
-        d = js.get('data') or js
-        if isinstance(d, dict):
-            episodes = d.get('playItems') or d.get('episodes') or d.get('programs') or []
+        if isinstance(js, dict):
+            drama = js.get('series') or js.get('data') or {}
+            if not isinstance(drama, dict):
+                drama = {}
+            episodes = js.get('playItems') or []
+            if not episodes:
+                episodes = self._pick_list(js)
         if not episodes:
             js = self.api_get('/api/series2/episodes', {'sid': sid})
             episodes = self._pick_list(js)
         if not episodes:
             js = self.api_get('/api/series/programs_v2', {'sid': sid})
-            episodes = self._pick_list(js)
-        return d if isinstance(d, dict) else {}, episodes or []
+            episodes = self._pick_list(js) or js.get('qxkPrograms') or []
+        return drama, episodes or []
 
     def detailContent(self, ids):
         sid = str((ids or [''])[0])
         try:
             drama, episodes = self._episodes(sid)
             if not drama.get('name') and not drama.get('title'):
-                drama = (self.api_get('/api/series/detail', {'sid': sid}).get('data') or {})
+                extra = self.api_get('/api/series/detail', {'sid': sid})
+                drama = (extra.get('series') or extra.get('data') or drama) if isinstance(extra, dict) else drama
             parts = []
             for i, ep in enumerate(episodes, 1):
-                pid = ep.get('pid') or ep.get('playItemId') or ep.get('id') or ep.get('eid')
-                if not pid:
+                if not isinstance(ep, dict):
                     continue
-                parts.append('%s$%s|%s' % (self._ep_name(ep, i), sid, pid))
+                pid = ep.get('pid') or ep.get('playItemId') or ep.get('id') or ep.get('eid')
+                src = ep.get('srcUrl') or ''
+                site = ep.get('srcSite') or ''
+                if pid:
+                    token = '%s|%s' % (sid, pid)
+                    if src and str(src).startswith('http'):
+                        token += '|' + urllib.parse.quote(src, safe='')
+                        if site:
+                            token += '|' + urllib.parse.quote(str(site), safe='')
+                    parts.append('%s$%s' % (self._ep_name(ep, i), token))
+                elif src and str(src).startswith('http'):
+                    parts.append('%s$%s' % (self._ep_name(ep, i), src))
             if not parts:
                 parts.append('正片$%s' % sid)
             name = drama.get('name') or drama.get('title') or drama.get('seriesName') or sid
+            intro = drama.get('intro') or drama.get('description') or drama.get('brief') or ''
+            intro = re.sub(r'<[^>]+>', '', str(intro)).strip()
+            crew = drama.get('crew') or ''
+            actor = drama.get('actor') or drama.get('actors') or ''
+            if not actor and '主演' in crew:
+                m = re.search(r'主演[:：]\\s*([^\\n]+)', crew)
+                if m:
+                    actor = m.group(1).strip()
             return {
                 'list': [{
                     'vod_id': sid,
@@ -345,41 +438,91 @@ class Spider(BaseSpider):
                     'vod_pic': self._pic(drama),
                     'vod_year': str(drama.get('year') or ''),
                     'vod_area': drama.get('area') or '韩国',
-                    'vod_actor': drama.get('actor') or drama.get('actors') or '',
+                    'vod_actor': actor,
                     'vod_director': drama.get('director') or '',
-                    'vod_remarks': drama.get('upInfo') or drama.get('updateInfo') or '',
-                    'vod_content': drama.get('intro') or drama.get('description') or drama.get('brief') or '',
+                    'vod_remarks': drama.get('upInfo') or drama.get('updateInfo') or (
+                        '完结' if drama.get('isFinished') else ''
+                    ),
+                    'vod_content': intro,
                     'vod_play_from': '韩小圈',
                     'vod_play_url': '#'.join(parts),
                 }]
             }
         except Exception as e:
             print('获取详情失败: %s' % e)
-            return {'list': [{'vod_id': sid, 'vod_name': sid, 'vod_play_from': '韩小圈', 'vod_play_url': '正片$%s' % sid}]}
+            return {
+                'list': [{
+                    'vod_id': sid,
+                    'vod_name': sid,
+                    'vod_play_from': '韩小圈',
+                    'vod_play_url': '正片$%s' % sid,
+                }]
+            }
 
-    def _pick_url(self, obj):
-        if not obj:
+    def _pick_url(self, obj, depth=0):
+        if not obj or depth > 6:
             return ''
-        if isinstance(obj, str) and obj.startswith('http'):
-            return obj
+        if isinstance(obj, str):
+            s = obj.strip()
+            if s.startswith('http'):
+                return s
+            return ''
         if isinstance(obj, dict):
-            for k in ('playUrl', 'playurl', 'url', 'm3u8', 'src', 'path'):
+            for k in (
+                'playUrl', 'playurl', 'play_url', 'url', 'm3u8', 'mp4',
+                'src', 'path', 'srcUrl', 'videoUrl', 'mediaUrl', 'hls',
+                'highUrl', 'lowUrl', 'hdUrl', 'sdUrl', 'fhdUrl',
+            ):
                 v = obj.get(k)
                 if isinstance(v, str) and v.startswith('http'):
                     return v
                 if isinstance(v, dict):
-                    u = self._pick_url(v)
+                    u = self._pick_url(v, depth + 1)
                     if u:
                         return u
-            for nest in ('play', 'media', 'video', 'data', 'result'):
-                u = self._pick_url(obj.get(nest))
+            for nest in ('play', 'media', 'video', 'data', 'result', 'urls', 'list'):
+                u = self._pick_url(obj.get(nest), depth + 1)
                 if u:
                     return u
         if isinstance(obj, list):
             for it in obj:
-                u = self._pick_url(it)
+                u = self._pick_url(it, depth + 1)
                 if u:
                     return u
+        return ''
+
+    def _resolve_play(self, sid, pid):
+        qualities = ['11', '10', '2', '1', '0', '']
+        hosts = [self.appHost, self.appHost2]
+        paths = [
+            '/api/play/playurl',
+            '/api/play/get',
+            '/api/play/url',
+            '/api/series/play',
+            '/api/playItem/playurl',
+            '/api/playItem/url',
+        ]
+        for host in hosts:
+            for path in paths:
+                for q in qualities:
+                    params = {'pid': pid, 'sid': sid}
+                    if q != '':
+                        params['quality'] = q
+                        params['definition'] = q
+                    js = self.api_get(path, params, host=host)
+                    if not js:
+                        continue
+                    url = self._pick_url(js)
+                    if url:
+                        return url
+                    if isinstance(js, dict) and isinstance(js.get('data'), str) and len(js['data']) > 30:
+                        try:
+                            decoded = self._decode_body(js)
+                            url = self._pick_url(decoded)
+                            if url:
+                                return url
+                        except Exception:
+                            pass
         return ''
 
     def playerContent(self, flag, id, vipFlags):
@@ -390,24 +533,55 @@ class Spider(BaseSpider):
         }
         play_id = str(id or '')
         if play_id.startswith('http') and self.isVideoFormat(play_id):
-            return {'parse': 0, 'url': play_id, 'header': header}
+            return {'parse': 0, 'jx': '0', 'url': play_id, 'header': header}
+        if play_id.startswith('http'):
+            return {'parse': 1, 'jx': '1', 'url': play_id, 'header': header}
+
         parts = play_id.split('|')
-        sid = parts[0]
+        sid = parts[0] if parts else play_id
         pid = parts[1] if len(parts) > 1 else ''
+        src = ''
+        if len(parts) > 2:
+            try:
+                src = urllib.parse.unquote(parts[2])
+            except Exception:
+                src = parts[2]
+
         try:
-            for path, params in (
-                ('/api/play/playurl', {'pid': pid or sid}),
-                ('/api/play/get', {'pid': pid or sid, 'sid': sid}),
-                ('/api/series/play', {'pid': pid or sid, 'sid': sid}),
-            ):
-                if not pid and 'pid' in params and params['pid'] == sid:
-                    continue
-                js = self.api_get(path, params)
-                url = self._pick_url(js)
+            if pid:
+                url = self._resolve_play(sid, pid)
                 if url:
-                    return {'parse': 0 if self.isVideoFormat(url) else 1, 'url': url, 'header': header}
+                    return {
+                        'parse': 0 if self.isVideoFormat(url) else 1,
+                        'jx': '0' if self.isVideoFormat(url) else '1',
+                        'url': url,
+                        'header': header,
+                    }
+            if src and src.startswith('http'):
+                return {'parse': 1, 'jx': '1', 'url': src, 'header': header}
+            if sid and not pid:
+                _, episodes = self._episodes(sid)
+                for ep in episodes:
+                    if not isinstance(ep, dict):
+                        continue
+                    ep_pid = ep.get('pid') or ''
+                    if ep_pid:
+                        url = self._resolve_play(sid, ep_pid)
+                        if url:
+                            return {
+                                'parse': 0 if self.isVideoFormat(url) else 1,
+                                'jx': '0' if self.isVideoFormat(url) else '1',
+                                'url': url,
+                                'header': header,
+                            }
+                    ep_src = ep.get('srcUrl') or ''
+                    if ep_src.startswith('http'):
+                        return {'parse': 1, 'jx': '1', 'url': ep_src, 'header': header}
         except Exception as e:
             print('获取播放内容失败: %s' % e)
+
+        if src and src.startswith('http'):
+            return {'parse': 1, 'jx': '1', 'url': src, 'header': header}
         return {
             'parse': 1,
             'jx': '1',

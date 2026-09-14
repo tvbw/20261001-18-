@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+亚洲电视 ATV / HKATV
+官网: https://www.hkatv.com
+内容 API: https://srv-prod.hkatv.vip/c
+"""
 import json
 import re
 import sys
@@ -22,37 +27,50 @@ except ImportError:
 class Spider(BaseSpider):
     def __init__(self):
         self.siteUrl = 'https://www.hkatv.com'
+        self.api = 'https://srv-prod.hkatv.vip/c'
         self.userAgent = (
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
             '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
         )
+        # categoryId 来自 contentGetCategory
         self.channels = {
-            'drama': {'name': '劇集', 'paths': ['/zh-HK/drama', '/zh-HK/series', '/drama']},
-            'movie': {'name': '電影', 'paths': ['/zh-HK/movie', '/movie']},
-            'variety': {'name': '綜藝', 'paths': ['/zh-HK/variety', '/variety', '/zh-HK/show']},
-            'news': {'name': '新聞資訊', 'paths': ['/zh-HK/news', '/news']},
-            'classic': {'name': '經典', 'paths': ['/zh-HK', '/', '/en-US']},
+            '4': {'name': '微视频'},
+            '2': {'name': '推荐'},
+            '3': {'name': '微头条'},
+            '22': {'name': '资讯'},
+            '5': {'name': '香港'},
+            '25': {'name': '热榜'},
+            '48': {'name': '社团'},
         }
 
     def getName(self):
-        return '亞洲電視 ATV'
+        return '亚洲电视 ATV'
 
     def init(self, extend=""):
-        pass
+        if not extend:
+            return
+        try:
+            if isinstance(extend, str) and extend.startswith('http'):
+                self.api = extend.rstrip('/')
+            elif isinstance(extend, str) and extend.strip().startswith('{'):
+                ext = json.loads(extend)
+                if ext.get('api'):
+                    self.api = str(ext['api']).rstrip('/')
+        except Exception:
+            pass
 
     def fetch(self, url, headers=None, params=None):
         if headers is None:
             headers = {
                 'User-Agent': self.userAgent,
                 'Referer': self.siteUrl + '/',
-                'Accept': 'text/html,application/json,application/xhtml+xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'zh-HK,zh-TW;q=0.9,zh;q=0.8,en;q=0.7',
+                'Origin': self.siteUrl,
+                'Accept': 'application/json, text/plain, */*',
+                'Accept-Language': 'zh-HK,zh-CN;q=0.9,zh;q=0.8',
             }
         try:
             if requests:
-                resp = requests.get(url, headers=headers, params=params, timeout=15)
-                resp.raise_for_status()
-                return resp
+                return requests.get(url, headers=headers, params=params, timeout=15)
             full = url
             if params:
                 full += ('&' if '?' in url else '?') + urllib.parse.urlencode(params)
@@ -62,6 +80,7 @@ class Spider(BaseSpider):
             class R:
                 def __init__(self, raw):
                     self.text = raw.decode('utf-8', 'ignore')
+                    self.status_code = 200
 
                 def json(self):
                     return json.loads(self.text)
@@ -71,11 +90,8 @@ class Spider(BaseSpider):
             print('请求失败: %s, %s' % (url, e))
             return None
 
-    def fetch_text(self, url, params=None):
-        resp = self.fetch(url, params=params)
-        return getattr(resp, 'text', '') if resp else ''
-
-    def fetch_json(self, url, params=None):
+    def fetch_json(self, path, params=None):
+        url = path if str(path).startswith('http') else self.api + path
         resp = self.fetch(url, params=params)
         if not resp:
             return {}
@@ -100,129 +116,118 @@ class Spider(BaseSpider):
             return self.siteUrl + u
         return u
 
-    def _walk(self, obj, acc=None):
-        if acc is None:
-            acc = []
-        if isinstance(obj, dict):
-            if (obj.get('id') or obj.get('vod_id') or obj.get('videoId')) and (
-                obj.get('title') or obj.get('name')
-            ):
-                acc.append(obj)
-            for v in obj.values():
-                self._walk(v, acc)
-        elif isinstance(obj, list):
-            for v in obj:
-                self._walk(v, acc)
-        return acc
+    def _pick_play(self, item):
+        if not isinstance(item, dict):
+            return ''
+        for k in ('hls1080P', 'hls720P', 'hls480P'):
+            u = item.get(k) or ''
+            if u and str(u).startswith('http'):
+                return str(u)
+        content = str(item.get('content') or item.get('sourceUrl') or '')
+        if content.startswith('http') and any(x in content for x in ('.mp4', '.m3u8', '.flv')):
+            return content.split()[0]
+        # resources
+        res = item.get('resources')
+        if isinstance(res, list):
+            for r in res:
+                if isinstance(r, dict):
+                    u = r.get('url') or r.get('src') or ''
+                    if u:
+                        return u
+                elif isinstance(r, str) and r.startswith('http'):
+                    return r
+        return ''
 
     def _map(self, item):
-        vid = str(item.get('id') or item.get('vod_id') or item.get('videoId') or item.get('slug') or '')
-        title = item.get('title') or item.get('name') or item.get('vod_name') or vid
+        if not isinstance(item, dict):
+            return None
+        vid = str(item.get('id') or '')
         if not vid:
             return None
-        pic = item.get('cover') or item.get('poster') or item.get('image') or item.get('thumb') or item.get('vod_pic') or ''
-        remarks = item.get('remark') or item.get('update') or item.get('category') or ''
+        title = item.get('title') or item.get('name') or vid
+        title = re.sub(r'<[^>]+>', '', str(title)).strip()
+        if len(title) > 60:
+            title = title[:60] + '…'
+        pic = (
+            item.get('coverUrl')
+            or item.get('videoPreviewPic')
+            or ''
+        )
+        remarks = item.get('categoryName') or item.get('duration') or 'ATV'
         return {
             'vod_id': vid,
-            'vod_name': re.sub(r'<[^>]+>', '', str(title)),
+            'vod_name': title,
             'vod_pic': self._abs(pic),
             'vod_remarks': str(remarks),
         }
 
-    def _parse_html(self, html):
-        videos = []
-        seen = set()
-        for m in re.finditer(
-            r'href="([^"]*(?:/play/|/video/|/vod/|/detail/|/watch/)([^"/\s?]+))"[^>]{0,240}(?:title|alt)="([^"]*)"',
-            html or '',
-            re.I,
-        ):
-            vid, name = m.group(2), m.group(3) or m.group(2)
-            if vid in seen:
-                continue
-            seen.add(vid)
-            videos.append({'vod_id': vid, 'vod_name': name, 'vod_pic': '', 'vod_remarks': ''})
-        for m in re.finditer(r'<script type="application/ld\+json">(\{.*?\})</script>', html or '', re.S):
-            try:
-                js = json.loads(m.group(1))
-            except Exception:
-                continue
-            for item in self._walk(js):
-                v = self._map(item)
-                if v and v['vod_id'] not in seen:
-                    seen.add(v['vod_id'])
-                    videos.append(v)
-        m = re.search(r'<script id="__NEXT_DATA__"[^>]*>(\{.*?\})</script>', html or '', re.S)
-        if m:
-            try:
-                data = json.loads(m.group(1))
-                for item in self._walk(data.get('props') or data):
-                    v = self._map(item)
-                    if v and v['vod_id'] not in seen:
-                        seen.add(v['vod_id'])
-                        videos.append(v)
-            except Exception:
-                pass
-        return videos
-
-    def _load_list(self, paths):
-        videos = []
-        for path in paths:
-            url = path if path.startswith('http') else self.siteUrl + path
-            html = self.fetch_text(url)
-            videos.extend(self._parse_html(html))
-            if videos:
-                break
-            for api in (
-                self.siteUrl + '/api/vod/list',
-                self.siteUrl + '/api/video/list',
-                self.siteUrl + path + '?format=json',
-            ):
-                js = self.fetch_json(api)
-                if js:
-                    for item in self._walk(js):
-                        v = self._map(item)
-                        if v:
-                            videos.append(v)
-                    if videos:
-                        break
-        out, seen = [], set()
-        for v in videos:
-            if v['vod_id'] in seen:
-                continue
-            seen.add(v['vod_id'])
-            out.append(v)
-        return out
-
     def homeContent(self, filter):
         classes = [{'type_id': k, 'type_name': v['name']} for k, v in self.channels.items()]
+        # 尝试从接口刷新分类名
+        try:
+            data = self.fetch_json('/content/contentGetCategory')
+            items = data.get('data') or []
+            if items:
+                classes = []
+                for c in items:
+                    cid = str(c.get('id') or '')
+                    name = c.get('name') or cid
+                    if not cid or name in ('关注',):
+                        continue
+                    if c.get('homeShow') in (0, '0'):
+                        continue
+                    classes.append({'type_id': cid, 'type_name': name})
+                    self.channels[cid] = {'name': name}
+                if not classes:
+                    classes = [{'type_id': k, 'type_name': v['name']} for k, v in self.channels.items()]
+        except Exception:
+            pass
         return {'class': classes, 'filters': {}}
 
     def homeVideoContent(self):
         videos = []
         try:
-            videos = self._load_list(['/zh-HK', '/', '/en-US'])
+            data = self.fetch_json('/content/contentList', {'page': 1, 'pageSize': 24, 'categoryId': 4})
+            for x in (data.get('data') or []):
+                v = self._map(x)
+                if v:
+                    videos.append(v)
+            if not videos:
+                data = self.fetch_json('/content/contentList', {'page': 1, 'pageSize': 24})
+                for x in (data.get('data') or []):
+                    v = self._map(x)
+                    if v:
+                        videos.append(v)
         except Exception as e:
-            print('获取首页视频失败: %s' % e)
+            print('首页失败: %s' % e)
         return {'list': videos[:24]}
 
     def categoryContent(self, tid, pg, filter, extend):
         pg = int(pg or 1)
         videos = []
+        total = 0
         try:
-            info = self.channels.get(str(tid), self.channels['classic'])
-            paths = list(info.get('paths') or ['/'])
-            if pg > 1:
-                paths = [p + (('&' if '?' in p else '?') + 'page=' + str(pg)) for p in paths]
-            videos = self._load_list(paths)
+            params = {
+                'page': pg,
+                'pageSize': 24,
+                'categoryId': int(tid) if str(tid).isdigit() else 4,
+            }
+            data = self.fetch_json('/content/contentList', params)
+            items = data.get('data') or []
+            total = int(data.get('count') or 0)
+            for x in items:
+                v = self._map(x)
+                if v:
+                    videos.append(v)
         except Exception as e:
-            print('获取分类内容失败: %s' % e)
+            print('分类失败: %s' % e)
+        pagecount = max(1, (total + 23) // 24) if total else (pg + 1 if len(videos) >= 12 else pg)
         return {
             'list': videos,
             'page': pg,
-            'pagecount': pg + 1 if len(videos) >= 8 else pg,
+            'pagecount': pagecount,
             'limit': 24,
-            'total': 9999,
+            'total': total or len(videos),
         }
 
     def searchContent(self, key, quick, pg=1):
@@ -232,16 +237,27 @@ class Spider(BaseSpider):
         pg = int(pg or 1)
         videos = []
         try:
-            q = urllib.parse.quote(key)
-            videos = self._load_list([
-                '/zh-HK/search?q=' + q,
-                '/search?keyword=' + q,
-                '/en-US/search?q=' + q,
-            ])
+            # 接口若无专用搜索，则用列表关键词过滤 / 多分类拉取
+            q = str(key or '').strip()
+            for cid in list(self.channels.keys())[:5]:
+                data = self.fetch_json('/content/contentList', {
+                    'page': pg,
+                    'pageSize': 30,
+                    'categoryId': int(cid),
+                })
+                for x in (data.get('data') or []):
+                    title = str(x.get('title') or '')
+                    if q and q not in title:
+                        continue
+                    v = self._map(x)
+                    if v:
+                        videos.append(v)
+                if len(videos) >= 24:
+                    break
         except Exception as e:
             print('搜索失败: %s' % e)
         return {
-            'list': videos,
+            'list': videos[:48],
             'page': pg,
             'pagecount': pg,
             'limit': 24,
@@ -250,59 +266,52 @@ class Spider(BaseSpider):
 
     def detailContent(self, ids):
         vid = str((ids or [''])[0])
-        name, pic, desc, remarks = vid, '', '', ''
-        parts = []
         try:
-            html = ''
-            for path in (
-                '/zh-HK/play/' + vid,
-                '/play/' + vid,
-                '/zh-HK/video/' + vid,
-                '/video/' + vid,
-                '/watch/' + vid,
-            ):
-                html = self.fetch_text(self.siteUrl + path)
-                if html and len(html) > 400:
-                    break
-            tm = re.search(r'<title>([^<]+)</title>', html or '')
-            if tm:
-                name = re.sub(r'\s*[-_|].*$', '', tm.group(1)).strip() or name
-            pm = re.search(r'og:image["\']\s+content=["\']([^"\']+)', html or '')
-            if pm:
-                pic = self._abs(pm.group(1))
-            dm = re.search(r'og:description["\']\s+content=["\']([^"\']+)', html or '')
-            if dm:
-                desc = dm.group(1)
-            for href, title in re.findall(
-                r'href="([^"]*(?:/play/|/video/)([^"/\s?]+))"[^>]{0,160}>([^<]{1,40})',
-                html or '',
-                re.I,
-            ):
-                ep = title.strip() or href
-                play = self._abs(href)
-                parts.append('%s$%s' % (ep, play))
-            if not parts:
-                yt = re.search(r'(?:youtube\.com/embed/|youtu\.be/)([A-Za-z0-9_-]{6,})', html or '')
-                if yt:
-                    parts.append('YouTube$https://www.youtube.com/watch?v=%s' % yt.group(1))
-            m3 = re.search(r'https?://[^\s"\']+\.m3u8[^\s"\']*', html or '')
-            if m3:
-                parts = ['高清$%s' % m3.group(0)] + parts
-        except Exception as e:
-            print('获取详情失败: %s' % e)
-        if not parts:
-            parts.append('Play$%s/play/%s' % (self.siteUrl, vid))
-        return {
-            'list': [{
+            item = self.fetch_json('/content/contentDetail', {'id': vid})
+            if not item or not isinstance(item, dict):
+                item = {}
+            # 若详情无视频，再拉列表项兜底
+            if not self._pick_play(item):
+                data = self.fetch_json('/content/contentList', {'page': 1, 'pageSize': 50})
+                for x in (data.get('data') or []):
+                    if str(x.get('id')) == vid:
+                        item = x
+                        break
+            name = re.sub(r'<[^>]+>', '', str(item.get('title') or vid)).strip()
+            pic = self._abs(item.get('coverUrl') or item.get('videoPreviewPic') or '')
+            desc = item.get('description') or item.get('content') or ''
+            if isinstance(desc, str) and desc.startswith('http'):
+                desc = name
+            desc = re.sub(r'<[^>]+>', '', str(desc)).strip()[:500]
+            remarks = item.get('categoryName') or item.get('duration') or 'ATV'
+
+            plays = []
+            # 多清晰度
+            for label, key in (('1080P', 'hls1080P'), ('720P', 'hls720P'), ('480P', 'hls480P')):
+                u = item.get(key) or ''
+                if u and str(u).startswith('http'):
+                    plays.append('%s$%s' % (label, u))
+            direct = self._pick_play(item)
+            if direct and not any(direct in p for p in plays):
+                plays.insert(0, '播放$%s' % direct)
+
+            if not plays:
+                plays = ['页面$%s/zh-CN/video/play?id=%s' % (self.siteUrl, vid)]
+
+            return {'list': [{
                 'vod_id': vid,
-                'vod_name': name,
+                'vod_name': name[:80],
                 'vod_pic': pic,
-                'vod_remarks': remarks or ('%s EP' % len(parts) if len(parts) > 1 else 'ATV'),
-                'vod_content': (desc or '').strip(),
+                'vod_remarks': str(remarks),
+                'vod_actor': '',
+                'vod_director': '',
+                'vod_content': desc,
                 'vod_play_from': 'ATV',
-                'vod_play_url': '#'.join(parts),
-            }]
-        }
+                'vod_play_url': '#'.join(plays),
+            }]}
+        except Exception as e:
+            print('详情失败: %s' % e)
+            return {'list': []}
 
     def playerContent(self, flag, id, vipFlags):
         header = {
@@ -310,16 +319,29 @@ class Spider(BaseSpider):
             'Referer': self.siteUrl + '/',
             'Origin': self.siteUrl,
         }
-        play_url = str(id or '')
-        if self.isVideoFormat(play_url):
-            return {'parse': 0, 'url': play_url, 'header': header}
-        return {'parse': 1, 'jx': '1', 'url': play_url, 'header': header}
+        play = str(id or '')
+        if self.isVideoFormat(play) and play.startswith('http'):
+            return {'parse': 0, 'jx': '0', 'url': play, 'header': header}
+
+        # id 可能仍是内容 id
+        if play.isdigit():
+            item = self.fetch_json('/content/contentDetail', {'id': play})
+            u = self._pick_play(item or {})
+            if u:
+                return {'parse': 0, 'jx': '0', 'url': u, 'header': header}
+
+        return {
+            'parse': 1,
+            'jx': '1',
+            'url': play if play.startswith('http') else self.siteUrl + '/zh-CN/video/play?id=' + play,
+            'header': header,
+        }
 
     def isVideoFormat(self, url):
         if not url:
             return False
         u = url.lower()
-        return any(x in u for x in ('.mp4', '.m3u8', '.flv', '.mpd'))
+        return any(x in u for x in ('.mp4', '.m3u8', '.flv', '.mpd', 'hkatv.vip', 'auth_key='))
 
     def manualVideoCheck(self):
         return False
@@ -331,3 +353,10 @@ class Spider(BaseSpider):
 if __name__ == '__main__':
     spider = Spider()
     print(json.dumps(spider.homeContent(True), ensure_ascii=False, indent=2))
+    r = spider.categoryContent('4', 1, {}, {})
+    print('list', len(r['list']), r['list'][0] if r['list'] else None)
+    if r['list']:
+        d = spider.detailContent([r['list'][0]['vod_id']])
+        print('detail', d['list'][0]['vod_name'][:40], d['list'][0]['vod_play_url'][:100])
+        token = d['list'][0]['vod_play_url'].split('#')[0].split('$')[-1]
+        print(json.dumps(spider.playerContent('ATV', token, []), ensure_ascii=False)[:220])

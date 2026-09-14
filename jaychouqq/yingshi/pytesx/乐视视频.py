@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+乐视视频 https://www.le.com / https://lefun.le.com
+分类：so.le.com 关键词搜索 + 首页推荐
+播放：详情页直链 / playJson（若可用）/ 网页解析
+"""
 import json
 import re
+import ssl
 import sys
 import time
 import urllib.parse
@@ -21,25 +27,29 @@ except ImportError:
 
 
 class Spider(BaseSpider):
-    """乐视视频 https://lefun.le.com"""
+    """乐视视频"""
 
     def __init__(self):
-        self.siteUrl = 'https://lefun.le.com'
-        self.wwwUrl = 'https://www.le.com'
-        self.mApi = 'https://d.api.m.le.com'
-        self.listApi = 'https://list.le.com'
+        self.siteUrl = 'https://www.le.com'
+        self.funUrl = 'https://lefun.le.com'
+        self.soUrl = 'https://so.le.com'
         self.userAgent = (
-            'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) '
-            'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1'
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+            '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
         )
+        # type_id -> 搜索关键词（list API / list.le.com 已不可用）
         self.channels = {
-            '1': {'name': '电影', 'cid': '1'},
-            '2': {'name': '电视剧', 'cid': '2'},
-            '5': {'name': '动漫', 'cid': '5'},
-            '11': {'name': '综艺', 'cid': '11'},
-            '16': {'name': '纪录片', 'cid': '16'},
-            '4': {'name': '体育', 'cid': '4'},
+            'movie': {'name': '电影', 'kw': '电影'},
+            'tv': {'name': '电视剧', 'kw': '电视剧'},
+            'anime': {'name': '动漫', 'kw': '动漫'},
+            'variety': {'name': '综艺', 'kw': '综艺'},
+            'doc': {'name': '纪录片', 'kw': '纪录片'},
+            'sport': {'name': '体育', 'kw': '体育'},
+            'hot': {'name': '热播', 'kw': '热播'},
         }
+        self._ssl_ctx = ssl.create_default_context()
+        self._ssl_ctx.check_hostname = False
+        self._ssl_ctx.verify_mode = ssl.CERT_NONE
 
     def getName(self):
         return '乐视视频'
@@ -52,19 +62,21 @@ class Spider(BaseSpider):
             headers = {
                 'User-Agent': self.userAgent,
                 'Referer': self.siteUrl + '/',
-                'Accept': 'application/json, text/plain, */*',
+                'Accept': 'text/html,application/json,application/xhtml+xml;q=0.9,*/*;q=0.8',
                 'Accept-Language': 'zh-CN,zh;q=0.9',
             }
         try:
             if requests:
-                resp = requests.get(url, headers=headers, params=params, timeout=12)
+                resp = requests.get(
+                    url, headers=headers, params=params, timeout=15, verify=False
+                )
                 resp.raise_for_status()
                 return resp
             full = url
             if params:
                 full += ('&' if '?' in url else '?') + urllib.parse.urlencode(params)
             from urllib.request import Request, urlopen
-            raw = urlopen(Request(full, headers=headers), timeout=12).read()
+            raw = urlopen(Request(full, headers=headers), timeout=15, context=self._ssl_ctx).read()
 
             class R:
                 def __init__(self, raw):
@@ -101,6 +113,7 @@ class Spider(BaseSpider):
     def _abs(self, u):
         if not u:
             return ''
+        u = str(u).strip()
         if u.startswith('//'):
             return 'https:' + u
         if u.startswith('/'):
@@ -110,74 +123,80 @@ class Spider(BaseSpider):
     def _clean(self, s):
         return re.sub(r'<[^>]+>', '', str(s or '')).replace('&nbsp;', ' ').strip()
 
-    def _walk(self, obj, acc=None):
-        if acc is None:
-            acc = []
-        if isinstance(obj, dict):
-            keys = set(obj.keys())
-            if keys & {'aid', 'vid', 'pid', 'albumId', 'leId', 'id'} and (
-                obj.get('name') or obj.get('title') or obj.get('albumName')
-            ):
-                acc.append(obj)
-            for v in obj.values():
-                self._walk(v, acc)
-        elif isinstance(obj, list):
-            for v in obj:
-                self._walk(v, acc)
-        return acc
+    def _bad_name(self, name):
+        if not name or len(name) < 2:
+            return True
+        bad = ('播放', '立即开通', '会员', '登录', '注册', '更多', '分享', '下载', '收藏')
+        return any(b in name for b in bad)
 
-    def _map_item(self, it):
-        if not isinstance(it, dict):
-            return None
-        vid = str(it.get('aid') or it.get('pid') or it.get('albumId') or it.get('leId') or it.get('vid') or it.get('id') or '')
-        name = it.get('name') or it.get('title') or it.get('albumName') or it.get('subTitle') or ''
-        pic = it.get('pic') or it.get('img') or it.get('poster') or it.get('images') or ''
-        if isinstance(pic, dict):
-            pic = pic.get('pic169') or pic.get('pic300') or next(iter(pic.values()), '')
-        remarks = it.get('subTitle') or it.get('rating') or it.get('episodes') or it.get('isEnd') or ''
-        if it.get('nowEpisodes'):
-            remarks = '更新至%s集' % it.get('nowEpisodes')
-        elif it.get('episodes'):
-            remarks = '全%s集' % it.get('episodes')
-        if not vid or not name:
-            return None
-        return {
-            'vod_id': vid,
-            'vod_name': name,
-            'vod_pic': self._abs(str(pic)),
-            'vod_remarks': str(remarks),
-        }
-
-    def _parse_html(self, html):
+    def _parse_list(self, html):
+        """从首页/搜索页解析 /ptv/vplay/{id}.html"""
         videos, seen = [], set()
+        # 链接文字
         for m in re.finditer(
-            r'href="((?:https?://[^"/]+)?/(?:ptv|vplay|video)/(?:[^"]*?))"[^>]{0,220}(?:title|alt)="([^"]+)"',
+            r'/ptv/vplay/(\d+)\.html[^>]*>\s*([^<]{2,60})',
+            html or '',
+        ):
+            vid, name = m.group(1), self._clean(m.group(2))
+            if vid in seen or self._bad_name(name):
+                continue
+            seen.add(vid)
+            videos.append({
+                'vod_id': vid,
+                'vod_name': name,
+                'vod_pic': '',
+                'vod_remarks': '乐视',
+            })
+        # title/alt
+        for m in re.finditer(
+            r'href="[^"]*?/ptv/vplay/(\d+)\.html"[^>]{0,280}(?:title|alt)="([^"]{2,80})"',
             html or '',
             re.I,
         ):
-            href, name = m.group(1), self._clean(m.group(2))
-            vid_m = re.search(r'(\d{5,})', href)
-            vid = vid_m.group(1) if vid_m else href
-            if not name or vid in seen:
-                continue
-            seen.add(vid)
-            videos.append({
-                'vod_id': vid,
-                'vod_name': name,
-                'vod_pic': '',
-                'vod_remarks': '',
-            })
-        for m in re.finditer(r'(\d{6,})\.html[^>]{0,80}>([^<]{2,40})', html or ''):
             vid, name = m.group(1), self._clean(m.group(2))
-            if vid in seen or not name:
+            if vid in seen or self._bad_name(name):
                 continue
             seen.add(vid)
             videos.append({
                 'vod_id': vid,
                 'vod_name': name,
                 'vod_pic': '',
-                'vod_remarks': '',
+                'vod_remarks': '乐视',
             })
+        # 补封面
+        for m in re.finditer(
+            r'/ptv/vplay/(\d+)\.html[\s\S]{0,400}?(?:src|data-src|data-original)="([^"]+\.(?:jpg|jpeg|png|webp)[^"]*)"',
+            html or '',
+            re.I,
+        ):
+            for v in videos:
+                if v['vod_id'] == m.group(1) and not v['vod_pic']:
+                    v['vod_pic'] = self._abs(m.group(2))
+                    break
+        for m in re.finditer(
+            r'(?:src|data-src)="([^"]+\.(?:jpg|jpeg|png|webp)[^"]*)"[^>]{0,200}/ptv/vplay/(\d+)',
+            html or '',
+            re.I,
+        ):
+            for v in videos:
+                if v['vod_id'] == m.group(2) and not v['vod_pic']:
+                    v['vod_pic'] = self._abs(m.group(1))
+                    break
+        return videos
+
+    def _search_kw(self, kw, pg=1):
+        q = urllib.parse.quote(str(kw or ''))
+        urls = [
+            '%s/s?wd=%s' % (self.soUrl, q),
+            '%s/s?wd=%s&from=pc' % (self.soUrl, q),
+            '%s/s?wd=%s&page=%s' % (self.soUrl, q, pg),
+        ]
+        videos = []
+        for url in urls:
+            html = self.fetch_text(url)
+            videos = self._parse_list(html)
+            if videos:
+                break
         return videos
 
     def homeContent(self, filter):
@@ -187,50 +206,40 @@ class Spider(BaseSpider):
     def homeVideoContent(self):
         videos = []
         try:
-            html = self.fetch_text(self.siteUrl + '/')
-            videos = self._parse_html(html)
+            for base in (self.siteUrl + '/', self.funUrl + '/'):
+                html = self.fetch_text(base)
+                videos = self._parse_list(html)
+                if videos:
+                    break
             if not videos:
-                data = self.fetch_json(
-                    self.mApi + '/card/dynamic',
-                    params={'cid': '2', 'platform': 'mobile', 'type': 'recommend'},
-                )
-                for it in self._walk(data):
-                    v = self._map_item(it)
-                    if v:
-                        videos.append(v)
+                videos = self._search_kw('热播', 1)
         except Exception as e:
             print('获取首页视频失败: %s' % e)
-        return {'list': videos[:24]}
+        return {'list': videos[:30]}
 
     def categoryContent(self, tid, pg, filter, extend):
         pg = int(pg or 1)
         videos = []
         try:
-            cid = self.channels.get(str(tid), {}).get('cid', str(tid) or '2')
-            data = self.fetch_json(
-                self.mApi + '/list',
-                params={'cid': cid, 'page': pg, 'pagesize': 30, 'platform': 'mobile'},
-            )
-            if not data:
-                data = self.fetch_json(
-                    'https://list.le.com/apipccard/chnllist',
-                    params={'cid': cid, 'page': pg, 'src': 1},
-                )
-            for it in self._walk(data):
-                v = self._map_item(it)
-                if v:
-                    videos.append(v)
-            if not videos:
+            info = self.channels.get(str(tid), {'kw': str(tid) or '热播'})
+            kw = info.get('kw') or str(tid)
+            if str(tid) == 'hot' or kw == '热播':
                 html = self.fetch_text(self.siteUrl + '/')
-                videos = self._parse_html(html)
+                videos = self._parse_list(html)
+            if not videos:
+                videos = self._search_kw(kw, pg)
+            # 首页补充
+            if not videos and pg == 1:
+                html = self.fetch_text(self.siteUrl + '/')
+                videos = self._parse_list(html)
         except Exception as e:
             print('获取分类内容失败: %s' % e)
         return {
             'list': videos,
             'page': pg,
-            'pagecount': pg + 1 if len(videos) >= 12 else pg,
+            'pagecount': pg + 1 if len(videos) >= 8 else pg,
             'limit': 30,
-            'total': 9999,
+            'total': 9999 if len(videos) >= 8 else len(videos),
         }
 
     def searchContent(self, key, quick, pg=1):
@@ -240,18 +249,7 @@ class Spider(BaseSpider):
         pg = int(pg or 1)
         videos = []
         try:
-            q = urllib.parse.quote(key)
-            data = self.fetch_json(
-                'https://so.le.com/s',
-                params={'wd': key, 'page': pg},
-            )
-            for it in self._walk(data):
-                v = self._map_item(it)
-                if v:
-                    videos.append(v)
-            if not videos:
-                html = self.fetch_text('https://so.le.com/s?wd=' + q)
-                videos = self._parse_html(html)
+            videos = self._search_kw(key, pg)
         except Exception as e:
             print('搜索失败: %s' % e)
         return {
@@ -264,97 +262,124 @@ class Spider(BaseSpider):
 
     def detailContent(self, ids):
         vid = str((ids or [''])[0])
-        name, pic, desc, remarks = vid, '', '', ''
-        play_from, play_urls = ['乐视'], []
+        vid = re.sub(r'\D', '', vid) or vid
+        name, pic, desc = vid, '', ''
+        page = '%s/ptv/vplay/%s.html' % (self.siteUrl, vid)
         try:
-            page = vid if vid.startswith('http') else ('https://www.le.com/ptv/vplay/%s.html' % vid)
             html = self.fetch_text(page)
-            data = self.fetch_json(
-                self.mApi + '/apipccard/dynamic',
-                params={'cid': '2', 'vid': re.sub(r'\D', '', vid) or vid, 'platform': 'pc', 'type': 'episode'},
+            tm = re.search(r'<title>([^<]+)</title>', html or '')
+            if tm:
+                name = re.sub(r'\s*[-_|].*$', '', tm.group(1)).strip() or name
+            hm = re.search(r'<h1[^>]*>([\s\S]{2,80})</h1>', html or '')
+            if hm:
+                name = self._clean(hm.group(1)) or name
+            pm = re.search(
+                r'(?:og:image["\']\s+content=["\']|poster=["\'])([^"\']+)',
+                html or '',
             )
-            items = self._walk(data)
-            first = items[0] if items else {}
-            name = first.get('name') or first.get('title') or name
-            pic = self._abs(str(first.get('pic') or first.get('img') or ''))
-            desc = first.get('description') or first.get('subTitle') or ''
-            if items:
-                for it in items:
-                    epn = it.get('name') or it.get('title') or it.get('episode') or '播放'
-                    epid = it.get('vid') or it.get('id') or vid
-                    url = it.get('playUrl') or ('https://www.le.com/ptv/vplay/%s.html' % epid)
-                    play_urls.append('%s$%s' % (epn, url))
-            if not play_urls:
-                tm = re.search(r'<title>([^<]+)</title>', html or '')
-                if tm:
-                    name = re.sub(r'\s*[-_|].*$', '', tm.group(1)).strip() or name
-                m3 = re.search(r'https?://[^\s"\']+\.m3u8[^\s"\']*', html or '')
-                mp4 = re.search(r'https?://[^\s"\']+\.mp4[^\s"\']*', html or '')
-                play_urls.append('播放$%s' % ((m3 or mp4).group(0) if (m3 or mp4) else page))
-            remarks = '共%s集' % len(play_urls) if len(play_urls) > 1 else '乐视'
+            if pm:
+                pic = self._abs(pm.group(1))
+            if not pic:
+                im = re.search(
+                    r'(https?://i\d*\.letvimg\.com/[^"\']+\.(?:jpg|png|webp)[^"\']*)',
+                    html or '',
+                    re.I,
+                )
+                if im:
+                    pic = self._abs(im.group(1))
+            dm = re.search(r'og:description["\']\s+content=["\']([^"\']+)', html or '')
+            if dm:
+                desc = dm.group(1)
+            # 选集
+            parts = []
+            seen = set()
+            for m in re.finditer(r'/ptv/vplay/(\d+)\.html[^>]*>\s*([^<]{1,20})', html or ''):
+                eid, en = m.group(1), self._clean(m.group(2))
+                if eid in seen or self._bad_name(en):
+                    continue
+                if re.match(r'^\d+$', en) or '集' in en or eid == vid:
+                    seen.add(eid)
+                    parts.append('%s$%s' % (en if en else ('第%s集' % len(parts) + 1), eid))
+            if not parts:
+                parts = ['播放$%s' % vid]
+            play_url = '#'.join(parts)
         except Exception as e:
             print('获取详情失败: %s' % e)
-            play_urls = ['播放$https://www.le.com/ptv/vplay/%s.html' % vid]
+            play_url = '播放$%s' % vid
         return {'list': [{
             'vod_id': vid,
             'vod_name': name,
             'vod_pic': pic,
-            'vod_remarks': remarks,
+            'vod_remarks': '乐视',
             'vod_actor': '',
             'vod_director': '',
             'vod_content': (desc or '').strip(),
-            'vod_play_from': '$$$'.join(play_from),
-            'vod_play_url': '#'.join(play_urls),
+            'vod_play_from': '乐视',
+            'vod_play_url': play_url,
         }]}
+
+    def _play_json(self, vid):
+        """尝试历史 playJson 接口"""
+        tkey = str(int(time.time()))
+        bases = [
+            'https://player-pc.le.com/mms/out/video/playJson.json',
+        ]
+        variants = [
+            {'platid': '1', 'splatid': '101', 'tss': 'ios', 'dvtype': '1000', 'domain': 'm.le.com'},
+            {'platid': '3', 'splatid': '304', 'tss': 'no', 'dvtype': '1300', 'domain': 'www.le.com'},
+            {'platid': '3', 'splatid': '301', 'tss': 'no', 'dvtype': '1000', 'domain': 'www.le.com'},
+        ]
+        for base in bases:
+            for v in variants:
+                params = dict(v)
+                params.update({'id': vid, 'detect': '1', 'tkey': tkey})
+                js = self.fetch_json(base, params=params)
+                if not isinstance(js, dict) or js.get('code') == -1:
+                    continue
+                playurl = (js.get('msgs') or {}).get('playurl') or js.get('playurl') or {}
+                if not isinstance(playurl, dict):
+                    continue
+                dispatch = playurl.get('dispatch') or {}
+                domain = playurl.get('domain') or ['']
+                if isinstance(domain, list):
+                    domain = domain[0] if domain else ''
+                path = ''
+                if isinstance(dispatch, dict) and dispatch:
+                    path = list(dispatch.values())[0]
+                    if isinstance(path, list):
+                        path = path[0]
+                if domain and path:
+                    url = str(domain) + str(path)
+                    if not url.startswith('http'):
+                        url = 'https:' + url
+                    return url
+        return ''
 
     def playerContent(self, flag, id, vipFlags):
         header = {
             'User-Agent': self.userAgent,
-            'Referer': 'https://www.le.com/',
-            'Origin': 'https://www.le.com',
+            'Referer': self.siteUrl + '/',
+            'Origin': self.siteUrl,
         }
         play = str(id or '')
         if self.isVideoFormat(play) and play.startswith('http'):
             return {'parse': 0, 'jx': '0', 'url': play, 'header': header}
-        if play.isdigit():
-            play = 'https://www.le.com/ptv/vplay/%s.html' % play
-        if play.startswith('/'):
-            play = self.wwwUrl + play
+
+        vid = re.search(r'(\d{5,})', play)
+        vid = vid.group(1) if vid else play
+        if play.isdigit() or (not play.startswith('http')):
+            play = '%s/ptv/vplay/%s.html' % (self.siteUrl, vid)
+
+        # playJson
+        url = self._play_json(vid)
+        if url:
+            return {'parse': 0, 'jx': '0', 'url': url, 'header': header}
+
         html = self.fetch_text(play) if play.startswith('http') else ''
         m = re.search(r'https?://[^\s"\']+\.(?:m3u8|mp4)[^\s"\']*', html or '')
         if m:
             return {'parse': 0, 'jx': '0', 'url': m.group(0).replace('\\/', '/'), 'header': header}
-        vid = re.search(r'(\d{5,})', play)
-        if vid:
-            tkey = str(int(time.time()))
-            js = self.fetch_json(
-                'https://player-pc.le.com/mms/out/video/playJson.json',
-                params={
-                    'platid': '3',
-                    'splatid': '304',
-                    'tss': 'no',
-                    'id': vid.group(1),
-                    'detect': '1',
-                    'dvtype': '1300',
-                    'domain': 'www.le.com',
-                    'tkey': tkey,
-                },
-            )
-            playurl = ((js.get('msgs') or {}).get('playurl') or {})
-            dispatch = playurl.get('dispatch') or {}
-            domain = (playurl.get('domain') or [''])
-            if isinstance(domain, list):
-                domain = domain[0] if domain else ''
-            path = ''
-            if isinstance(dispatch, dict) and dispatch:
-                path = list(dispatch.values())[0]
-                if isinstance(path, list):
-                    path = path[0]
-            if domain and path:
-                url = str(domain) + str(path)
-                if not url.startswith('http'):
-                    url = 'https:' + url
-                return {'parse': 0, 'jx': '0', 'url': url, 'header': header}
+
         return {'parse': 1, 'jx': '1', 'url': play, 'header': header}
 
     def isVideoFormat(self, url):
@@ -373,3 +398,6 @@ class Spider(BaseSpider):
 if __name__ == '__main__':
     spider = Spider()
     print(json.dumps(spider.homeContent(True), ensure_ascii=False, indent=2))
+    print('--- category movie ---')
+    r = spider.categoryContent('movie', 1, {}, {})
+    print(json.dumps(r, ensure_ascii=False)[:800])

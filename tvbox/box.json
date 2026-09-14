@@ -25,7 +25,7 @@
    "key": "金牌影院",
    "name": "金牌[js]",
    "type": 3,
-   "api": "./js/金牌影院.js"
+   "api": "./js/金牌影视.js"
   },
   {
    "key": "py_maple",

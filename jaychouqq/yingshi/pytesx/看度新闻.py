@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+看度新闻 / 成都广播电视台 https://www.cditv.cn
+播放地址来自详情页脚本变量: fhdUrl / hdUrl / sdUrl / lowUrl
+CDN 示例: https://cstvod.candocloud.cn/..._hd.mp4
+"""
 import json
 import re
 import sys
@@ -20,13 +25,13 @@ except ImportError:
 
 
 class Spider(BaseSpider):
-    """看度新闻 / 成都广播电视台 https://www.cditv.cn/category/4822/1.html"""
+    """看度新闻"""
 
     def __init__(self):
         self.siteUrl = 'https://www.cditv.cn'
         self.userAgent = (
-            'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) '
-            'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1'
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+            '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
         )
         self.channels = {
             '4822': {'name': '视频栏目'},
@@ -47,19 +52,19 @@ class Spider(BaseSpider):
             headers = {
                 'User-Agent': self.userAgent,
                 'Referer': self.siteUrl + '/',
-                'Accept': 'text/html,application/json,application/xhtml+xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'zh-CN,zh;q=0.9',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
             }
         try:
             if requests:
-                resp = requests.get(url, headers=headers, params=params, timeout=12)
+                resp = requests.get(url, headers=headers, params=params, timeout=15)
                 resp.raise_for_status()
                 return resp
             full = url
             if params:
                 full += ('&' if '?' in url else '?') + urllib.parse.urlencode(params)
             from urllib.request import Request, urlopen
-            raw = urlopen(Request(full, headers=headers), timeout=12).read()
+            raw = urlopen(Request(full, headers=headers), timeout=15).read()
 
             class R:
                 def __init__(self, raw):
@@ -80,6 +85,7 @@ class Spider(BaseSpider):
     def _abs(self, u):
         if not u:
             return ''
+        u = str(u).strip().strip('"\'')
         if u.startswith('//'):
             return 'https:' + u
         if u.startswith('/'):
@@ -91,8 +97,10 @@ class Spider(BaseSpider):
 
     def _parse_list(self, html):
         videos, seen = [], set()
+        # 标准链接 /show/catid-id.html
         for m in re.finditer(
-            r'href="((?:https?://www\.cditv\.cn)?/show/(\d+)-(\d+)\.html)"[^>]{0,200}(?:title|alt)="([^"]*)"',
+            r'href=["\']((?:https?://(?:www\.)?cditv\.cn)?/show/(\d+)-(\d+)\.html)["\']'
+            r'[^>]{0,300}(?:title|alt)=["\']([^"\']*)["\']',
             html or '',
             re.I,
         ):
@@ -108,7 +116,10 @@ class Spider(BaseSpider):
                 'vod_remarks': '看度',
             })
         if not videos:
-            for m in re.finditer(r'/show/(\d+)-(\d+)\.html"[^>]*>([^<]{4,80})', html or ''):
+            for m in re.finditer(
+                r'/show/(\d+)-(\d+)\.html["\'][^>]*>\s*([^<]{4,100})',
+                html or '',
+            ):
                 vid = '%s-%s' % (m.group(1), m.group(2))
                 name = self._clean(m.group(3))
                 if vid in seen or not name:
@@ -120,14 +131,17 @@ class Spider(BaseSpider):
                     'vod_pic': '',
                     'vod_remarks': '看度',
                 })
+        # 补封面
         for m in re.finditer(
-            r'show/(\d+-\d+)\.html[\s\S]{0,260}?(?:src|data-src|data-original)="([^"]+\.(?:jpg|jpeg|png|webp)[^"]*)"',
+            r'show/(\d+-\d+)\.html[\s\S]{0,400}?(?:src|data-src|data-original)=["\']'
+            r'([^"\']+\.(?:jpg|jpeg|png|webp)[^"\']*)["\']',
             html or '',
             re.I,
         ):
             for v in videos:
                 if v['vod_id'] == m.group(1) and not v['vod_pic']:
                     v['vod_pic'] = self._abs(m.group(2))
+                    break
         return videos
 
     def _list_url(self, tid, pg):
@@ -136,6 +150,64 @@ class Spider(BaseSpider):
             '%s/category/%s/%s.html' % (self.siteUrl, tid, pg),
             '%s/list/%s/%s.html' % (self.siteUrl, tid, pg),
         ]
+
+    def _extract_play(self, html):
+        """从详情页提取真实播放地址（优先高清）"""
+        if not html:
+            return ''
+        # 1) 页面内嵌 fhdUrl / hdUrl / sdUrl / lowUrl
+        urls = {}
+        for key in ('fhdUrl', 'hdUrl', 'sdUrl', 'lowUrl'):
+            m = re.search(
+                r'(?:var\s+)?%s\s*=\s*[\'"]([^\'"]*)[\'"]' % key,
+                html,
+                re.I,
+            )
+            if m and m.group(1).strip():
+                urls[key] = self._abs(m.group(1).strip())
+        for key in ('fhdUrl', 'hdUrl', 'sdUrl', 'lowUrl'):
+            if urls.get(key) and urls[key].startswith('http'):
+                return urls[key]
+
+        # 2) videourl / videoUrl 赋值
+        for pat in (
+            r'videourl\s*[:=]\s*[\'"](https?://[^\'"]+)[\'"]',
+            r'videoUrl\s*[:=]\s*[\'"](https?://[^\'"]+)[\'"]',
+            r'["\']video_url["\']\s*[:=]\s*["\'](https?://[^"\']+)["\']',
+            r'["\']playurl["\']\s*[:=]\s*["\'](https?://[^"\']+)["\']',
+            r'["\']play_url["\']\s*[:=]\s*["\'](https?://[^"\']+)["\']',
+            r'file\s*:\s*[\'"](https?://[^\'"]+\.(?:mp4|m3u8)[^\'"]*)[\'"]',
+        ):
+            m = re.search(pat, html, re.I)
+            if m:
+                return self._abs(m.group(1).replace('\\/', '/'))
+
+        # 3) candocloud / 其他 CDN 直链
+        m = re.search(
+            r'https?://[^\s"\'<>]+(?:candocloud|cditv|omtech)[^\s"\'<>]*\.(?:mp4|m3u8)[^\s"\'<>]*',
+            html,
+            re.I,
+        )
+        if m:
+            return m.group(0).replace('\\/', '/')
+
+        # 4) 通用 m3u8 / mp4
+        m3 = re.search(r'https?://[^\s"\'<>]+\.m3u8[^\s"\'<>]*', html or '')
+        if m3:
+            return m3.group(0).replace('\\/', '/')
+        mp4 = re.search(r'https?://[^\s"\'<>]+\.mp4[^\s"\'<>]*', html or '')
+        if mp4:
+            return mp4.group(0).replace('\\/', '/')
+
+        # 5) <video src> / <source>
+        src = re.search(r'<video[^>]+src=["\']([^"\']+)["\']', html or '', re.I)
+        if src:
+            return self._abs(src.group(1))
+        src2 = re.search(r'<source[^>]+src=["\']([^"\']+)["\']', html or '', re.I)
+        if src2:
+            return self._abs(src2.group(1))
+
+        return ''
 
     def homeContent(self, filter):
         classes = [{'type_id': k, 'type_name': v['name']} for k, v in self.channels.items()]
@@ -162,7 +234,6 @@ class Spider(BaseSpider):
         videos = []
         try:
             tid = str(tid or '4822')
-            html = ''
             for url in self._list_url(tid, pg):
                 html = self.fetch_text(url)
                 videos = self._parse_list(html)
@@ -214,8 +285,9 @@ class Spider(BaseSpider):
     def detailContent(self, ids):
         vid = str((ids or [''])[0])
         name, pic, desc = vid, '', ''
+        page = self.siteUrl + '/show/%s.html' % vid
+        play = ''
         try:
-            page = self.siteUrl + '/show/%s.html' % vid
             html = self.fetch_text(page)
             tm = re.search(r'<title>([^<]+)</title>', html or '')
             if tm:
@@ -223,33 +295,30 @@ class Spider(BaseSpider):
             hm = re.search(r'<h1[^>]*>([\s\S]{2,120})</h1>', html or '')
             if hm:
                 name = self._clean(hm.group(1)) or name
-            pm = re.search(r'(?:og:image["\']\s+content=["\']|poster=["\'])([^"\']+)', html or '')
+            pm = re.search(
+                r'(?:og:image["\']\s+content=["\']|poster=["\'])([^"\']+)',
+                html or '',
+            )
             if pm:
                 pic = self._abs(pm.group(1))
-            dm = re.search(r'og:description["\']\s+content=["\']([^"\']+)', html or '')
+            dm = re.search(
+                r'og:description["\']\s+content=["\']([^"\']+)',
+                html or '',
+            )
             if dm:
                 desc = dm.group(1)
             if not desc:
-                cm = re.search(r'class="[^"]*(?:content|article|intro)[^"]*"[^>]*>([\s\S]{20,400})</div>', html or '')
+                cm = re.search(
+                    r'class="[^"]*(?:content|article|intro)[^"]*"[^>]*>([\s\S]{20,400})</div>',
+                    html or '',
+                )
                 if cm:
                     desc = self._clean(cm.group(1))[:400]
-            m3 = re.search(r'https?://[^\s"\']+\.m3u8[^\s"\']*', html or '')
-            mp4 = re.search(r'https?://[^\s"\']+\.mp4[^\s"\']*', html or '')
-            src = re.search(r'<video[^>]+src=["\']([^"\']+)["\']', html or '', re.I)
-            src2 = re.search(r'(?:file|url|videoUrl|playurl)\s*[:=]\s*["\'](https?://[^"\']+)["\']', html or '', re.I)
-            play = ''
-            if m3:
-                play = m3.group(0).replace('\\/', '/')
-            elif mp4:
-                play = mp4.group(0).replace('\\/', '/')
-            elif src:
-                play = self._abs(src.group(1))
-            elif src2:
-                play = src2.group(1)
+            play = self._extract_play(html)
             play_url = '播放$%s' % (play or page)
         except Exception as e:
             print('获取详情失败: %s' % e)
-            play_url = '播放$%s/show/%s.html' % (self.siteUrl, vid)
+            play_url = '播放$%s' % page
         return {'list': [{
             'vod_id': vid,
             'vod_name': name,
@@ -263,30 +332,41 @@ class Spider(BaseSpider):
         }]}
 
     def playerContent(self, flag, id, vipFlags):
+        # CDN 播放需带 Referer，否则可能 403
         header = {
             'User-Agent': self.userAgent,
             'Referer': self.siteUrl + '/',
             'Origin': self.siteUrl,
         }
-        play = str(id or '')
+        play = str(id or '').strip()
         if self.isVideoFormat(play) and play.startswith('http'):
+            # candocloud 等 CDN
+            if 'candocloud' in play or 'cditv' in play:
+                header['Referer'] = self.siteUrl + '/'
             return {'parse': 0, 'jx': '0', 'url': play, 'header': header}
+
+        # 详情页 id 或路径
         if not play.startswith('http'):
-            play = self.siteUrl + (play if play.startswith('/') else '/show/%s.html' % play)
+            if re.match(r'\d+-\d+$', play):
+                play = self.siteUrl + '/show/%s.html' % play
+            elif play.startswith('/'):
+                play = self.siteUrl + play
+            else:
+                play = self.siteUrl + '/show/%s.html' % play
+
         html = self.fetch_text(play)
-        m3 = re.search(r'https?://[^\s"\']+\.m3u8[^\s"\']*', html or '')
-        if m3:
-            return {'parse': 0, 'jx': '0', 'url': m3.group(0).replace('\\/', '/'), 'header': header}
-        mp4 = re.search(r'https?://[^\s"\']+\.mp4[^\s"\']*', html or '')
-        if mp4:
-            return {'parse': 0, 'jx': '0', 'url': mp4.group(0).replace('\\/', '/'), 'header': header}
+        url = self._extract_play(html)
+        if url and self.isVideoFormat(url):
+            return {'parse': 0, 'jx': '0', 'url': url, 'header': header}
+        if url and url.startswith('http'):
+            return {'parse': 1, 'jx': '1', 'url': url, 'header': header}
         return {'parse': 1, 'jx': '1', 'url': play, 'header': header}
 
     def isVideoFormat(self, url):
         if not url:
             return False
-        u = url.lower()
-        return any(x in u for x in ('.mp4', '.m3u8', '.flv', '.mpd'))
+        u = url.lower().split('?')[0]
+        return any(u.endswith(x) or ('.' + x.split('.')[-1]) in u for x in ('.mp4', '.m3u8', '.flv', '.mpd'))
 
     def manualVideoCheck(self):
         return False

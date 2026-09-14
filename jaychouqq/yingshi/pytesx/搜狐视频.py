@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+搜狐视频
+列表/详情: api.tv.sohu.com
+播放: m.tv.sohu.com/phone_playinfo?vid= → mp4 / m3u8
+"""
 import json
 import re
 import sys
@@ -23,6 +28,7 @@ class Spider(BaseSpider):
     def __init__(self):
         self.siteUrl = 'https://tv.sohu.com'
         self.api = 'https://api.tv.sohu.com'
+        self.mApi = 'https://m.tv.sohu.com'
         self.userAgent = (
             'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) '
             'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1'
@@ -76,6 +82,7 @@ class Spider(BaseSpider):
                 full += ('&' if '?' in url else '?') + urllib.parse.urlencode(params)
             from urllib.request import Request, urlopen
             raw = urlopen(Request(full, headers=headers), timeout=12).read()
+
             class R:
                 def __init__(self, raw):
                     self.content = raw
@@ -83,13 +90,14 @@ class Spider(BaseSpider):
 
                 def json(self):
                     return json.loads(self.text)
+
             return R(raw)
         except Exception as e:
             print('请求失败: %s, %s' % (url, e))
             return None
 
-    def fetch_json(self, url, params=None):
-        resp = self.fetch(url, params=params)
+    def fetch_json(self, url, params=None, headers=None):
+        resp = self.fetch(url, headers=headers, params=params)
         if not resp:
             return {}
         try:
@@ -113,7 +121,9 @@ class Spider(BaseSpider):
                     {'cid': cid, 'page': 1, 'page_size': 8}
                 )
                 for item in ((data.get('data') or {}).get('videos') or [])[:8]:
-                    videos.append(self._parseAlbum(item))
+                    v = self._parseAlbum(item)
+                    if v:
+                        videos.append(v)
                 if len(videos) >= 24:
                     break
         except Exception as e:
@@ -136,7 +146,9 @@ class Spider(BaseSpider):
             )
             body = data.get('data') or {}
             for item in body.get('videos') or []:
-                videos.append(self._parseAlbum(item))
+                v = self._parseAlbum(item)
+                if v:
+                    videos.append(v)
             total = int(body.get('count') or len(videos))
             pagecount = max(1, (total + 23) // 24) if total else (pg + 1 if videos else pg)
         except Exception as e:
@@ -155,7 +167,7 @@ class Spider(BaseSpider):
             info = (self.fetch_json(self.api + '/v4/album/info/%s.json' % aid).get('data') or {})
             videos = []
             page = 1
-            while page <= 20:
+            while page <= 30:
                 body = (self.fetch_json(
                     self.api + '/v4/album/videos/%s.json' % aid,
                     {'page': page, 'page_size': 50}
@@ -167,12 +179,18 @@ class Spider(BaseSpider):
                 page += 1
             play_urls = []
             for ep in videos:
-                name = ep.get('albumVideoShowName') or ep.get('video_name') or ('第%s集' % (len(play_urls) + 1))
-                play_id = self._pickPlay(ep)
-                if play_id:
-                    play_urls.append('%s$%s' % (name, play_id))
+                name = (
+                    ep.get('albumVideoShowName')
+                    or ep.get('video_name')
+                    or ('第%s集' % (len(play_urls) + 1))
+                )
+                # 优先存 vid，播放时走 phone_playinfo 拿真实地址
+                vid = str(ep.get('vid') or '')
+                if not vid:
+                    continue
+                play_urls.append('%s$vid:%s' % (name, vid))
             if not play_urls:
-                play_urls.append('正片$%s' % aid)
+                play_urls.append('正片$aid:%s' % aid)
             vod = {
                 'vod_id': aid,
                 'vod_name': info.get('album_name') or info.get('video_name') or aid,
@@ -201,12 +219,13 @@ class Spider(BaseSpider):
             if re.match(r'^\d{5,}$', str(key).strip()):
                 info = (self.fetch_json(self.api + '/v4/album/info/%s.json' % key.strip()).get('data') or {})
                 if info.get('aid') or info.get('album_name'):
-                    videos.append(self._parseAlbum(info))
+                    v = self._parseAlbum(info)
+                    if v:
+                        videos.append(v)
                     return {'list': videos, 'page': 1, 'pagecount': 1, 'limit': 20, 'total': 1}
             for path in (
                 '/v4/search/video.json',
                 '/v4/search/album.json',
-                '/v4/search/channel.json',
             ):
                 data = self.fetch_json(
                     self.api + path,
@@ -214,20 +233,19 @@ class Spider(BaseSpider):
                 )
                 body = data.get('data') or {}
                 items = body.get('videos') or body.get('albums') or []
-                if items and path != '/v4/search/channel.json':
+                if items:
                     for item in items:
-                        videos.append(self._parseAlbum(item))
+                        v = self._parseAlbum(item)
+                        if v:
+                            videos.append(v)
                     break
-                if items and path == '/v4/search/channel.json' and not videos:
-                    # channel.json 在部分地区忽略关键词，仅作兜底
-                    for item in items[:20]:
-                        name = item.get('album_name') or item.get('video_name') or ''
-                        if key and key not in name:
-                            continue
-                        videos.append(self._parseAlbum(item))
             if not videos:
-                html = self._get_text('https://so.tv.sohu.com/mts?wd=%s&c=0' % urllib.parse.quote(key))
-                for aid, title in re.findall(r'/album/(\d+)\.html[^>]*title="([^"]+)"', html or ''):
+                html = self._get_text(
+                    'https://so.tv.sohu.com/mts?wd=%s&c=0' % urllib.parse.quote(key)
+                )
+                for aid, title in re.findall(
+                    r'/album/(\d+)\.html[^>]*title="([^"]+)"', html or ''
+                ):
                     videos.append({
                         'vod_id': aid,
                         'vod_name': title,
@@ -244,45 +262,105 @@ class Spider(BaseSpider):
             'total': len(videos),
         }
 
+    def _resolve_play(self, vid):
+        """通过 phone_playinfo 取可播 mp4/m3u8"""
+        headers = {
+            'User-Agent': self.userAgent,
+            'Referer': self.mApi + '/',
+            'Accept': 'application/json',
+        }
+        data = self.fetch_json(
+            self.mApi + '/phone_playinfo',
+            params={'vid': str(vid)},
+            headers=headers,
+        )
+        body = data.get('data') or data or {}
+        urls = body.get('urls') or {}
+
+        # 优先 mp4（实测 data.vod.itc.cn 可播）
+        mp4 = urls.get('mp4') or {}
+        for q in ('sup', 'ori', 'hig', 'nor'):
+            lst = mp4.get(q) or []
+            if lst and isinstance(lst[0], str) and lst[0].startswith('http'):
+                return lst[0].replace('http://', 'https://')
+
+        # m3u8（带完整参数）
+        m3u8 = urls.get('m3u8') or {}
+        for q in ('sup', 'ori', 'hig', 'nor'):
+            lst = m3u8.get(q) or []
+            if lst and isinstance(lst[0], str) and lst[0].startswith('http'):
+                return lst[0].replace('http://', 'https://')
+
+        # 回退 video/info 里的地址
+        info = (self.fetch_json(self.api + '/v4/video/info/%s.json' % vid).get('data') or {})
+        for key in (
+            'url_super', 'url_super_265', 'url_high', 'url_high_265',
+            'url_original', 'url_nor', 'url_blue',
+        ):
+            u = info.get(key) or ''
+            if u.startswith('http'):
+                return u.replace('http://', 'https://')
+
+        return ''
+
     def playerContent(self, flag, id, vipFlags):
         header = {
             'User-Agent': self.userAgent,
             'Referer': 'https://tv.sohu.com/',
             'Origin': 'https://tv.sohu.com',
         }
-        play_url = str(id or '')
+        play = str(id or '')
         try:
-            if play_url.startswith('http') and self.isVideoFormat(play_url):
-                return {'parse': 0, 'url': play_url.replace('http://', 'https://'), 'header': header}
-            if play_url.startswith('http'):
-                return {'parse': 1, 'jx': '1', 'url': play_url, 'header': header}
-            if play_url.isdigit():
+            if play.startswith('http') and self.isVideoFormat(play):
+                return {
+                    'parse': 0,
+                    'jx': '0',
+                    'url': play.replace('http://', 'https://'),
+                    'header': header,
+                }
+            if play.startswith('http'):
+                return {'parse': 1, 'jx': '1', 'url': play, 'header': header}
+
+            vid = ''
+            if play.startswith('vid:'):
+                vid = play[4:]
+            elif play.startswith('aid:'):
+                # 专辑取第一集
+                aid = play[4:]
                 body = (self.fetch_json(
-                    self.api + '/v4/album/videos/%s.json' % play_url,
+                    self.api + '/v4/album/videos/%s.json' % aid,
                     {'page': 1, 'page_size': 1}
                 ).get('data') or {})
                 vs = body.get('videos') or []
                 if vs:
-                    picked = self._pickPlay(vs[0])
-                    if picked and picked.startswith('http') and self.isVideoFormat(picked):
-                        return {'parse': 0, 'url': picked.replace('http://', 'https://'), 'header': header}
+                    vid = str(vs[0].get('vid') or '')
+            elif play.isdigit():
+                vid = play
+
+            if vid:
+                url = self._resolve_play(vid)
+                if url:
+                    return {'parse': 0, 'jx': '0', 'url': url, 'header': header}
+
             return {
                 'parse': 1,
                 'jx': '1',
-                'url': 'https://tv.sohu.com/album/%s.html' % play_url,
+                'url': 'https://tv.sohu.com/album/%s.html' % (vid or play),
                 'header': header,
             }
         except Exception as e:
             print('获取播放内容失败: %s' % e)
-            return {'parse': 1, 'url': play_url, 'header': header}
+            return {'parse': 1, 'url': play, 'header': header}
 
     def isVideoFormat(self, url):
         if not url:
             return False
         u = url.lower()
-        for fmt in ('.m3u8', '.mp4', '.flv', '.ts'):
-            if fmt in u:
-                return True
+        if any(x in u for x in ('.m3u8', '.mp4', '.flv', '.ts')):
+            return True
+        # 搜狐 CDN 鉴权链（无后缀）
+        if 'data.vod.itc.cn' in u or 'hot.vrs.sohu.com' in u:
+            return True
         return False
 
     def manualVideoCheck(self):
@@ -306,7 +384,11 @@ class Spider(BaseSpider):
         return getattr(resp, 'text', '') or ''
 
     def _parseAlbum(self, item):
+        if not isinstance(item, dict):
+            return None
         aid = str(item.get('aid') or item.get('album_id') or '')
+        if not aid:
+            return None
         pic = (
             item.get('ver_high_pic')
             or item.get('hor_high_pic')
@@ -324,20 +406,16 @@ class Spider(BaseSpider):
             'vod_area': item.get('area') or '',
         }
 
-    def _pickPlay(self, ep):
-        for key in (
-            'url_super', 'url_super_265', 'url_high', 'url_high_265',
-            'url_original', 'url_nor', 'url_blue', 'url_4K', 'url_html5'
-        ):
-            u = ep.get(key) or ''
-            if u and u.startswith('http'):
-                return u
-        vid = ep.get('vid')
-        if vid:
-            return 'https://hot.vrs.sohu.com/ipad%s.m3u8' % vid
-        return ''
-
 
 if __name__ == '__main__':
     spider = Spider()
     print(json.dumps(spider.homeContent(True), ensure_ascii=False, indent=2))
+    r = spider.categoryContent('1', 1, {}, {})
+    print('list', len(r.get('list') or []))
+    if r.get('list'):
+        aid = r['list'][0]['vod_id']
+        d = spider.detailContent([aid])
+        print('detail', (d.get('list') or [{}])[0].get('vod_name'))
+        token = (d.get('list') or [{}])[0].get('vod_play_url', '').split('#')[0].split('$')[-1]
+        print('token', token)
+        print(json.dumps(spider.playerContent('搜狐视频', token, []), ensure_ascii=False)[:300])

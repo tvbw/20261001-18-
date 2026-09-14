@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import hashlib
+"""
+咪咕视频 https://m.miguvideo.com / https://www.miguvideo.com
+分类：直播频道列表 (program-sc.miguvideo.com/live/v2/tv-data)
+播放：webapi playurl + ddCalcu
+"""
 import json
 import re
 import sys
-import time
 import urllib.parse
 
 try:
@@ -22,7 +25,7 @@ except ImportError:
 
 
 class Spider(BaseSpider):
-    """咪咕视频 https://m.miguvideo.com"""
+    """咪咕视频 - 以直播频道为主（列表接口稳定可用）"""
 
     LIVE_ROOT = '1ff892f2b5ab4a79be6e25b69d2f5d05'
     CHANNEL_ID = '0132_10010001005'
@@ -36,13 +39,20 @@ class Spider(BaseSpider):
             'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) '
             'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1'
         )
+        # 固定分类 type_id = live 分组 vomsID
         self.channels = {
-            'movie': {'name': '电影', 'kind': 'vod', 'kw': '电影'},
-            'tv': {'name': '电视剧', 'kind': 'vod', 'kw': '电视剧'},
-            'variety': {'name': '综艺', 'kind': 'vod', 'kw': '综艺'},
-            'anime': {'name': '动漫', 'kind': 'vod', 'kw': '动漫'},
-            'sport': {'name': '体育', 'kind': 'vod', 'kw': '体育'},
-            'live': {'name': '直播频道', 'kind': 'live', 'kw': ''},
+            'e7716fea6aa1483c80cfc10b7795fcb8': {'name': '热门'},
+            '7538163cdac044398cb292ecf75db4e0': {'name': '体育'},
+            '1ff892f2b5ab4a79be6e25b69d2f5d05': {'name': '央视'},
+            '0847b3f6c08a4ca28f85ba5701268424': {'name': '卫视'},
+            '855e9adc91b04ea18ef3f2dbd43f495b': {'name': '地方'},
+            '10b0d04cb23d4ac5945c4bc77c7ac44e': {'name': '影视'},
+            'c584f67ad63f4bc983c31de3a9be977c': {'name': '新闻'},
+            'af72267483d94275995a4498b2799ecd': {'name': '教育'},
+            'e76e56e88fff4c11b0168f55e826445d': {'name': '熊猫'},
+            '192a12edfef04b5eb616b878f031f32f': {'name': '综艺'},
+            'fc2f5b8fd7db43ff88c4243e731ecede': {'name': '少儿'},
+            'e1165138bdaa44b9a3138d74af6c6673': {'name': '纪实'},
         }
         self._live_cache = None
 
@@ -55,7 +65,7 @@ class Spider(BaseSpider):
     def _headers(self, extra=None):
         h = {
             'User-Agent': self.userAgent,
-            'Referer': self.siteUrl + '/',
+            'Referer': self.pcUrl + '/',
             'Origin': self.pcUrl,
             'Accept': 'application/json, text/plain, */*',
             'Accept-Language': 'zh-CN,zh;q=0.9',
@@ -117,17 +127,27 @@ class Spider(BaseSpider):
             return 'https:' + u
         return u
 
-    def _item(self, obj, live=False):
-        vid = str(obj.get('contId') or obj.get('pID') or obj.get('pid') or obj.get('id') or obj.get('contentId') or '')
-        name = obj.get('name') or obj.get('title') or obj.get('contName') or obj.get('programName') or vid
+    def _item(self, obj, live=True):
+        vid = str(
+            obj.get('pID') or obj.get('pid') or obj.get('contId')
+            or obj.get('id') or obj.get('contentId') or ''
+        )
+        name = (
+            obj.get('name') or obj.get('title') or obj.get('contName')
+            or obj.get('programName') or vid
+        )
         pic = ''
         pics = obj.get('pics') or obj.get('pic') or {}
         if isinstance(pics, dict):
-            pic = pics.get('highResolutionH') or pics.get('lowResolutionH') or pics.get('highResolutionV') or ''
+            pic = (
+                pics.get('highResolutionH') or pics.get('lowResolutionH')
+                or pics.get('highResolutionV') or pics.get('lowResolutionV') or ''
+            )
         elif isinstance(pics, str):
             pic = pics
         pic = pic or obj.get('h5pics') or obj.get('img') or obj.get('image') or ''
-        remarks = obj.get('updateEP') or obj.get('mediaForm') or obj.get('score') or ('直播' if live else '')
+        now = obj.get('nowPlaying') or obj.get('updateEP') or obj.get('mediaForm') or ''
+        remarks = now or ('直播' if live else '')
         if not vid:
             return None
         return {
@@ -137,49 +157,8 @@ class Spider(BaseSpider):
             'vod_remarks': str(remarks),
         }
 
-    def _walk(self, obj, acc=None):
-        if acc is None:
-            acc = []
-        if isinstance(obj, dict):
-            if obj.get('contId') or obj.get('pID') or obj.get('contentId'):
-                acc.append(obj)
-            for v in obj.values():
-                self._walk(v, acc)
-        elif isinstance(obj, list):
-            for v in obj:
-                self._walk(v, acc)
-        return acc
-
-    def _search_vod(self, keyword, pg=1, size=24):
-        videos = []
-        params = {
-            'searchWord': keyword,
-            'pageNum': str(pg),
-            'pageSize': str(size),
-            'searchType': '0',
-        }
-        for url in (
-            self.webApi + '/gateway/search/v3/search',
-            self.webApi + '/gateway/search/v2/search',
-        ):
-            data = self.fetch_json(url, params=params)
-            items = self._walk(data)
-            for it in items:
-                v = self._item(it, live=False)
-                if v:
-                    videos.append(v)
-            if videos:
-                break
-        seen, out = set(), []
-        for v in videos:
-            if v['vod_id'] in seen:
-                continue
-            seen.add(v['vod_id'])
-            out.append(v)
-        return out
-
     def _live_cats(self):
-        if self._live_cache:
+        if self._live_cache is not None:
             return self._live_cache
         data = self.fetch_json(self.programApi + '/live/v2/tv-data/' + self.LIVE_ROOT)
         live_list = ((data.get('body') or {}).get('liveList')) or []
@@ -187,14 +166,17 @@ class Spider(BaseSpider):
         for c in live_list:
             name = c.get('name') or ''
             vid = c.get('vomsID') or ''
-            if not vid or name == '热门':
+            if not vid:
                 continue
             cats.append({'name': name, 'vomsID': vid})
+        # 合并静态表，保证至少有默认分类
+        if not cats:
+            cats = [{'name': v['name'], 'vomsID': k} for k, v in self.channels.items()]
         self._live_cache = cats
         return cats
 
     def _live_list(self, voms_id):
-        data = self.fetch_json(self.programApi + '/live/v2/tv-data/' + voms_id)
+        data = self.fetch_json(self.programApi + '/live/v2/tv-data/' + str(voms_id))
         items = ((data.get('body') or {}).get('dataList')) or []
         videos = []
         for it in items:
@@ -204,65 +186,77 @@ class Spider(BaseSpider):
         return videos
 
     def homeContent(self, filter):
-        classes = [{'type_id': k, 'type_name': v['name']} for k, v in self.channels.items()]
+        classes = []
         try:
             for c in self._live_cats():
-                classes.append({'type_id': 'livecat_' + c['vomsID'], 'type_name': '直播-' + c['name']})
+                classes.append({'type_id': c['vomsID'], 'type_name': c['name']})
         except Exception:
-            pass
+            classes = [{'type_id': k, 'type_name': v['name']} for k, v in self.channels.items()]
+        if not classes:
+            classes = [{'type_id': k, 'type_name': v['name']} for k, v in self.channels.items()]
         return {'class': classes, 'filters': {}}
 
     def homeVideoContent(self):
         videos = []
         try:
-            videos = self._search_vod('热播', 1, 24)
+            # 优先热门
+            hot = 'e7716fea6aa1483c80cfc10b7795fcb8'
+            videos = self._live_list(hot)
             if not videos:
                 cats = self._live_cats()
                 if cats:
-                    videos = self._live_list(cats[0]['vomsID'])[:24]
+                    videos = self._live_list(cats[0]['vomsID'])
         except Exception as e:
             print('获取首页视频失败: %s' % e)
-        return {'list': videos[:24]}
+        return {'list': videos[:30]}
 
     def categoryContent(self, tid, pg, filter, extend):
         pg = int(pg or 1)
         videos = []
         try:
-            tid = str(tid or '')
+            tid = str(tid or self.LIVE_ROOT)
             if tid.startswith('livecat_'):
-                videos = self._live_list(tid.replace('livecat_', '', 1))
-            elif tid == 'live':
+                tid = tid.replace('livecat_', '', 1)
+            if tid == 'live':
                 for c in self._live_cats():
                     videos.extend(self._live_list(c['vomsID']))
             else:
-                info = self.channels.get(tid, {'kind': 'vod', 'kw': tid})
-                videos = self._search_vod(info.get('kw') or tid, pg, 24)
+                videos = self._live_list(tid)
         except Exception as e:
             print('获取分类内容失败: %s' % e)
-        more = len(videos) >= 12 and not str(tid).startswith('live')
         return {
             'list': videos,
-            'page': pg,
-            'pagecount': pg + 1 if more else pg,
-            'limit': 24,
-            'total': 9999 if more else len(videos),
+            'page': 1,
+            'pagecount': 1,
+            'limit': 50,
+            'total': len(videos),
         }
 
     def searchContent(self, key, quick, pg=1):
         return self.searchContentPage(key, quick, pg)
 
     def searchContentPage(self, key, quick, pg=1):
+        """搜索：在直播频道名/正在播放中过滤（点播搜索接口已下线）"""
         pg = int(pg or 1)
         videos = []
         try:
-            videos = self._search_vod(key, pg, 24)
+            key = str(key or '').strip()
+            if not key:
+                return {'list': [], 'page': pg, 'pagecount': pg, 'limit': 24, 'total': 0}
+            seen = set()
+            for c in self._live_cats():
+                for v in self._live_list(c['vomsID']):
+                    if key in v['vod_name'] or key in str(v.get('vod_remarks') or ''):
+                        if v['vod_id'] not in seen:
+                            seen.add(v['vod_id'])
+                            videos.append(v)
         except Exception as e:
             print('搜索失败: %s' % e)
         return {
             'list': videos,
-            'page': pg,
-            'pagecount': pg + 1 if len(videos) >= 12 else pg,
-            'limit': 24,
+            'page': 1,
+            'pagecount': 1,
+            'limit': 50,
             'total': len(videos),
         }
 
@@ -286,20 +280,31 @@ class Spider(BaseSpider):
         froms, urls = [], []
         try:
             if is_live:
+                # 尝试补全频道信息
+                info = self._content_info(cid)
+                data = info.get('data') if isinstance(info.get('data'), dict) else info
+                if isinstance(data, dict) and data:
+                    name = data.get('name') or data.get('contName') or name
+                    pics = data.get('pics') or {}
+                    if isinstance(pics, dict):
+                        pic = self._abs(pics.get('highResolutionH') or pics.get('lowResolutionH') or '')
                 froms = ['咪咕直播']
                 urls = ['直播$live_%s' % cid]
             else:
                 info = self._content_info(cid)
-                name = info.get('name') or info.get('contName') or info.get('title') or name
-                pics = info.get('pics') or {}
+                data = info.get('data') if isinstance(info.get('data'), dict) else info
+                if not isinstance(data, dict):
+                    data = {}
+                name = data.get('name') or data.get('contName') or data.get('title') or name
+                pics = data.get('pics') or {}
                 if isinstance(pics, dict):
                     pic = pics.get('highResolutionH') or pics.get('lowResolutionH') or ''
-                pic = self._abs(pic or info.get('img') or '')
-                desc = info.get('detail') or info.get('shortDesc') or info.get('intro') or ''
-                actor = info.get('actor') or info.get('stars') or ''
-                director = info.get('director') or ''
-                remarks = info.get('updateEP') or info.get('mediaForm') or remarks
-                episodes = info.get('episodes') or info.get('programList') or info.get('datas') or []
+                pic = self._abs(pic or data.get('img') or '')
+                desc = data.get('detail') or data.get('shortDesc') or data.get('intro') or ''
+                actor = data.get('actor') or data.get('stars') or ''
+                director = data.get('director') or ''
+                remarks = data.get('updateEP') or data.get('mediaForm') or remarks
+                episodes = data.get('episodes') or data.get('programList') or data.get('datas') or []
                 parts = []
                 if isinstance(episodes, list) and episodes:
                     for ep in episodes:
@@ -369,26 +374,27 @@ class Spider(BaseSpider):
 
     def _playurl(self, cid, rate='3'):
         url = self.webApi + '/gateway/playurl/v3/play/playurl'
-        params = {
-            'contId': cid,
-            'rateType': str(rate),
-            'xh265': 'true',
-            'chip': 'mgwww',
-            'channelId': self.CHANNEL_ID,
-        }
-        data = self.fetch_json(url, params=params)
-        body = data.get('body') or {}
-        info = body.get('urlInfo') or {}
-        raw = info.get('url') or ''
-        if not raw:
-            return ''
-        return self._ddcalcu(raw)
+        for r in (str(rate), '3', '2', '4', '1'):
+            params = {
+                'contId': cid,
+                'rateType': r,
+                'xh265': 'true',
+                'chip': 'mgwww',
+                'channelId': self.CHANNEL_ID,
+            }
+            data = self.fetch_json(url, params=params)
+            body = data.get('body') or {}
+            info = body.get('urlInfo') or {}
+            raw = info.get('url') or ''
+            if raw:
+                return self._ddcalcu(raw)
+        return ''
 
     def playerContent(self, flag, id, vipFlags):
         header = self._headers()
         play_id = str(id or '').replace('live_', '', 1)
         if self.isVideoFormat(play_id) and play_id.startswith('http'):
-            return {'parse': 0, 'url': play_id, 'header': header}
+            return {'parse': 0, 'jx': '0', 'url': play_id, 'header': header}
         try:
             url = self._playurl(play_id, '3')
             if url:
@@ -414,3 +420,5 @@ class Spider(BaseSpider):
 if __name__ == '__main__':
     spider = Spider()
     print(json.dumps(spider.homeContent(True), ensure_ascii=False, indent=2))
+    print('--- category ---')
+    print(json.dumps(spider.categoryContent('7538163cdac044398cb292ecf75db4e0', 1, {}, {}), ensure_ascii=False)[:600])
