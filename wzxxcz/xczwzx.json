@@ -31,7 +31,7 @@
             "name": "裤佬IPTV直播",
             "type": 0,
             "ua": "okhttp/5.3.2",
-            "url": "https://seep.eu.org/https://live.445569.xyz/live.m3u"
+            "url": "https://gh-proxy.org/https://raw.githubusercontent.com/pyapk/1/refs/heads/main/zby"
         },
 		{
             "name": "裤佬体育直播",
@@ -56,6 +56,18 @@
             "type": 0,
             "ua": "okhttp/5.3.2",
             "url": "https://445569.pages.dev/https://raw.githubusercontent.com/swhtv/111/refs/heads/main/华视box华视大全swtv"
+        },
+		{
+            "name": "易发TV直播",
+            "type": 0,
+            "ua": "okhttp/5.3.2",
+            "url": "https://445569.pages.dev/https://raw.githubusercontent.com/fafa002/yf2025/refs/heads/main/yiyifafa.txt"
+        },
+		{
+            "name": "日后TV直播",
+            "type": 0,
+            "ua": "okhttp/5.3.2",
+            "url": "https://jsnzkpg4.pages.dev/http://rihou.cc:555/gggg.nzk"
         },
 		{
             "name": "潇雨TV直播",
@@ -516,6 +528,12 @@
             "name": "🎵枫叶音乐",
             "type": 3,
             "api": "./py/枫叶音乐.py"
+        },
+		{
+            "key": "千千音乐",
+            "name": "🎵千千音乐",
+            "type": 3,
+            "api": "./py/千千音乐.py"
         },
         {
             "key": "荐片",
@@ -1358,12 +1376,6 @@
             "name": "🍊CNFLIX影视",
             "type": 3,
             "api": "./py/CNFLIX.py"
-        },
-		{
-            "key": "云朵影视",
-            "name": "☁️云朵影视",
-            "type": 3,
-            "api": "./py/云朵影视.py"
         },
 		{
             "key": "华谊影视1",
@@ -35662,6 +35674,30 @@
             "type": 3,
             "api": "./py/黑猫动漫.py"
         },
+		{
+            "key": "MiFun",
+            "name": "🍚MiFun动漫",
+            "type": 3,
+            "api": "./py/MiFun动漫.py"
+        },
+		{
+            "key": "动漫巴士",
+            "name": "🚐动漫巴士",
+            "type": 3,
+            "api": "./py/动漫巴士.py"
+        },
+		{
+            "key": "青空次元",
+            "name": "🤣青空次元",
+            "type": 3,
+            "api": "./py/青空次元.py"
+        },
+		{
+            "key": "共和国动漫",
+            "name": "🇨🇳共和国动漫",
+            "type": 3,
+            "api": "./py/共和国动漫.py"
+        },
         {
             "key": "红果短剧",
             "name": "🍎红果短剧",
@@ -35710,6 +35746,12 @@
             "name": "🍊石榴短剧",
             "type": 3,
             "api": "./py/石榴短剧.py"
+        },
+		{
+            "key": "百度短剧",
+            "name": "🍊百度短剧",
+            "type": 3,
+            "api": "./js/百度短剧.js"
         },
         {
             "key": "剧和短剧",
@@ -35764,6 +35806,12 @@
             "type": 3,
             "api": "csp_ShortHema",
             "genre": "shortdrama"
+        },
+		{
+            "key": "在线短剧",
+            "name": "🍊在线短剧",
+            "type": 3,
+            "api": "./py/在线短剧.py"
         },
         {
             "key": "短剧场短剧",
