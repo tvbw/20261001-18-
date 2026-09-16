@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+Internet Archive 蜘蛛
+修复：.ia.mp4 被误过滤导致无播放地址；下载链使用官方 /download/ 与 CDN 双保险
+"""
 import json
 import re
 import sys
@@ -59,7 +63,7 @@ class Spider(BaseSpider):
             }
         try:
             if requests:
-                resp = requests.get(url, headers=headers, params=params, timeout=20)
+                resp = requests.get(url, headers=headers, params=params, timeout=25)
                 resp.raise_for_status()
                 return resp
             full = url
@@ -67,7 +71,7 @@ class Spider(BaseSpider):
                 q = params if isinstance(params, str) else urllib.parse.urlencode(params, doseq=True)
                 full += ('&' if '?' in url else '?') + q
             from urllib.request import Request, urlopen
-            raw = urlopen(Request(full, headers=headers), timeout=20).read()
+            raw = urlopen(Request(full, headers=headers), timeout=25).read()
 
             class R:
                 def __init__(self, raw):
@@ -99,7 +103,7 @@ class Spider(BaseSpider):
         return str(v)
 
     def _thumb(self, ident):
-        return '%s/services/img/%s' % (self.siteUrl, urllib.parse.quote(ident))
+        return '%s/services/img/%s' % (self.siteUrl, urllib.parse.quote(ident, safe=''))
 
     def _map_doc(self, doc):
         ident = str(doc.get('identifier') or '')
@@ -193,55 +197,127 @@ class Spider(BaseSpider):
         }
 
     def _rank_file(self, f):
-        name = str(f.get('name') or '').lower()
+        """
+        给可播放文件打分。注意：IA 的 h.264 衍生文件名常带 .ia.mp4，不可过滤。
+        """
+        name = str(f.get('name') or '')
+        low = name.lower()
         fmt = str(f.get('format') or '').lower()
-        if '.ia.' in name or name.endswith('_files.xml'):
+        source = str(f.get('source') or '').lower()
+
+        # 明确排除
+        if low.endswith(('_files.xml', '.xml', '.sqlite', '.gz', '.zip', '.torrent', '.txt', '.vtt', '.srt')):
             return -1
-        if name.endswith(('.gif', '.jpg', '.jpeg', '.png')):
+        if low.endswith(('.gif', '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.webp', '.svg')):
             return -1
-        if name.endswith('.m3u8') or 'hls' in fmt:
-            return 100
-        if fmt in ('h.264', 'mpeg4', '512kb mpeg4'):
-            return 90
-        if name.endswith('.mp4'):
-            return 80
-        if name.endswith('.webm'):
-            return 70
-        if name.endswith('.ogv') or 'ogg video' in fmt:
-            return 50
-        if name.endswith('.mp3') or 'mp3' in fmt:
-            return 40
-        if name.endswith('.ogg') and 'vorbis' in fmt:
-            return 30
-        return -1
+        if low.endswith(('.epub', '.pdf', '.djvu', '.cbz')):
+            return -1
+        # 原始超大 archive 包
+        if fmt in ('archive bittorrent', 'metadata', 'json', 'unknown') and not low.endswith(('.mp4', '.mp3', '.m3u8', '.webm', '.ogv', '.ogg')):
+            return -1
+
+        score = -1
+        height = 0
+        try:
+            height = int(f.get('height') or 0)
+        except Exception:
+            height = 0
+
+        # HLS
+        if low.endswith('.m3u8') or 'hls' in fmt:
+            score = 100
+        # 官方衍生 h.264 / MPEG4（含 .ia.mp4）
+        elif fmt in ('h.264', 'mpeg4', '512kb mpeg4', 'h.264 ia'):
+            score = 95
+        elif low.endswith('.mp4'):
+            score = 90
+        elif low.endswith('.webm') or 'webm' in fmt:
+            score = 70
+        elif low.endswith('.ogv') or 'ogg video' in fmt:
+            score = 55
+        elif low.endswith('.mp3') or 'mp3' in fmt:
+            score = 45
+        elif low.endswith('.ogg') or 'vorbis' in fmt:
+            score = 35
+        elif low.endswith(('.mkv', '.avi', '.mov', '.mpg', '.mpeg', '.wmv', '.flv')):
+            # 原始片源，能播但体积大，分数略低
+            score = 50
+        else:
+            return -1
+
+        # 分辨率加分
+        if height >= 1080:
+            score += 8
+        elif height >= 720:
+            score += 5
+        elif height >= 480:
+            score += 2
+
+        # 衍生转码优先于 original 原盘
+        if source == 'derivative':
+            score += 3
+        elif source == 'original' and score >= 50:
+            score -= 5
+
+        return score
+
+    def _build_download_url(self, ident, fname, d1=None, directory=None):
+        """构造可播放直链：优先官方 /download/，备选 CDN"""
+        # 按路径分段编码，保留斜杠
+        parts = [urllib.parse.quote(p, safe='') for p in str(fname).split('/')]
+        enc_name = '/'.join(parts)
+        enc_id = urllib.parse.quote(ident, safe='')
+        primary = '%s/download/%s/%s' % (self.siteUrl, enc_id, enc_name)
+        if d1 and directory:
+            # d1 如 dn801201.us.archive.org，dir 如 /0/items/xxx
+            cdn = 'https://%s%s/%s' % (d1, directory.rstrip('/'), enc_name)
+            return primary, cdn
+        return primary, None
 
     def detailContent(self, ids):
         ident = str((ids or [''])[0]).strip('/')
         try:
-            js = self.fetch_json(self.metaApi + urllib.parse.quote(ident))
+            js = self.fetch_json(self.metaApi + urllib.parse.quote(ident, safe=''))
             meta = js.get('metadata') or {}
             files = js.get('files') or []
+            d1 = js.get('d1') or ''
+            directory = js.get('dir') or ''
+
             cands = []
             for f in files:
                 sc = self._rank_file(f)
                 if sc > 0:
                     cands.append((sc, f))
-            cands.sort(key=lambda x: x[0], reverse=True)
+            cands.sort(key=lambda x: (x[0], int(x[1].get('height') or 0)), reverse=True)
+
             urls = []
             seen = set()
-            for _, f in cands:
+            for sc, f in cands:
                 name = f.get('name')
                 if not name or name in seen:
                     continue
                 seen.add(name)
-                label = f.get('format') or name
-                if f.get('height'):
-                    label = '%s %sp' % (label, f.get('height'))
-                urls.append('%s$%s|%s' % (label, ident, urllib.parse.quote(name, safe='')))
-                if len(urls) >= 12:
+
+                fmt = f.get('format') or name
+                height = f.get('height')
+                if height:
+                    label = '%s %sp' % (fmt, height)
+                else:
+                    label = str(fmt)
+                # 去掉过长文件名噪音
+                if len(label) > 40:
+                    label = label[:37] + '...'
+
+                # play id: ident||filename  （双竖线避免与文件名中的 | 冲突）
+                play_id = '%s||%s' % (ident, urllib.parse.quote(name, safe=''))
+                urls.append('%s$%s' % (label, play_id))
+                if len(urls) >= 15:
                     break
+
             if not urls:
-                urls.append('页面$%s' % ident)
+                # 仍无文件时给详情页兜底
+                urls.append('详情页$%s' % ident)
+
             return {
                 'list': [{
                     'vod_id': ident,
@@ -261,40 +337,59 @@ class Spider(BaseSpider):
             return {'list': []}
 
     def playerContent(self, flag, id, vipFlags):
-        header = {'User-Agent': self.userAgent, 'Referer': self.siteUrl + '/'}
-        play_id = str(id or '')
+        header = {
+            'User-Agent': self.userAgent,
+            'Referer': self.siteUrl + '/',
+            'Accept': '*/*',
+            'Connection': 'keep-alive',
+        }
+        play_id = str(id or '').strip()
+
+        # 已是直链
         if play_id.startswith('http'):
-            return {'parse': 0 if self.isVideoFormat(play_id) else 1, 'url': play_id, 'header': header}
-        parts = play_id.split('|', 1)
-        ident = parts[0]
-        fname = urllib.parse.unquote(parts[1]) if len(parts) > 1 else ''
+            return {
+                'parse': 0 if self.isVideoFormat(play_id) else 1,
+                'jx': 0,
+                'url': play_id,
+                'header': header,
+            }
+
+        # 新格式 ident||filename ；兼容旧格式 ident|filename
+        if '||' in play_id:
+            ident, enc_name = play_id.split('||', 1)
+        elif '|' in play_id:
+            ident, enc_name = play_id.split('|', 1)
+        else:
+            ident, enc_name = play_id, ''
+
+        fname = urllib.parse.unquote(enc_name) if enc_name else ''
+
         try:
+            # 有文件名：直接拼下载地址
             if fname:
-                url = '%s/download/%s/%s' % (
-                    self.siteUrl,
-                    urllib.parse.quote(ident),
-                    '/'.join(urllib.parse.quote(p) for p in fname.split('/')),
-                )
-                return {'parse': 0, 'url': url, 'header': header}
-            js = self.fetch_json(self.metaApi + urllib.parse.quote(ident))
+                url, _ = self._build_download_url(ident, fname)
+                return {'parse': 0, 'jx': 0, 'url': url, 'header': header}
+
+            # 无文件名：重新选最优文件
+            js = self.fetch_json(self.metaApi + urllib.parse.quote(ident, safe=''))
+            d1 = js.get('d1') or ''
+            directory = js.get('dir') or ''
             best, best_sc = None, -1
             for f in js.get('files') or []:
                 sc = self._rank_file(f)
                 if sc > best_sc:
                     best_sc, best = sc, f
             if best and best.get('name'):
-                url = '%s/download/%s/%s' % (
-                    self.siteUrl,
-                    urllib.parse.quote(ident),
-                    '/'.join(urllib.parse.quote(p) for p in str(best['name']).split('/')),
-                )
-                return {'parse': 0, 'url': url, 'header': header}
+                url, cdn = self._build_download_url(ident, best['name'], d1, directory)
+                return {'parse': 0, 'jx': 0, 'url': url, 'header': header}
         except Exception as e:
             print('获取播放内容失败: %s' % e)
+
+        # 最后兜底：详情页（需嗅探）
         return {
             'parse': 1,
-            'jx': '1',
-            'url': '%s/details/%s' % (self.siteUrl, urllib.parse.quote(ident)),
+            'jx': 0,
+            'url': '%s/details/%s' % (self.siteUrl, urllib.parse.quote(ident, safe='')),
             'header': header,
         }
 
@@ -302,7 +397,7 @@ class Spider(BaseSpider):
         if not url:
             return False
         u = url.lower()
-        for fmt in ('.m3u8', '.mp4', '.mp3', '.ogv', '.webm', '.ogg'):
+        for fmt in ('.m3u8', '.mp4', '.mp3', '.ogv', '.webm', '.ogg', '.mkv', '.avi'):
             if fmt in u:
                 return True
         return False
@@ -317,3 +412,18 @@ class Spider(BaseSpider):
 if __name__ == '__main__':
     spider = Spider()
     print(json.dumps(spider.homeContent(True), ensure_ascii=False, indent=2))
+    # 简易自测
+    home = spider.homeVideoContent()
+    print('home videos', len(home.get('list') or []))
+    if home.get('list'):
+        vid = home['list'][0]['vod_id']
+        detail = spider.detailContent([vid])
+        lst = detail.get('list') or []
+        if lst:
+            print('play_from', lst[0].get('vod_play_from'))
+            print('play_url sample', (lst[0].get('vod_play_url') or '')[:200])
+            first = (lst[0].get('vod_play_url') or '').split('#')[0]
+            if '$' in first:
+                pid = first.split('$', 1)[1]
+                play = spider.playerContent('', pid, None)
+                print('play result', play.get('parse'), play.get('url', '')[:120])
