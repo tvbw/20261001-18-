@@ -3548,6 +3548,8 @@ Cine Mexicano,
 谍战电影,
 黄渤电影,
 Star Utsav Movies,
+Иллюзион+,
+Amedia 2,
 
 电视剧🔁,#genre#
 科幻动作,
@@ -3963,6 +3965,7 @@ ETV Abhiruchi,
 KPVM Story Television,
 自然传奇,
 地理中国,
+Terra HD,
 
 动画片,#genre#
 青春动漫,
@@ -6710,6 +6713,8 @@ Star Sports Select 1 HD,
 GolTV Latin America,
 MLB Network,
 TNC Sports,
+Авто Плюс,
+Русский Экстрим,
 
 少儿,#genre#
 央视少儿,
