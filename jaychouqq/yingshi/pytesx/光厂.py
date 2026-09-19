@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-光厂 VJshi Spider v1.2
-修复：纯 Python 过 WAF acw_sc__v2（不依赖 node），分类可加载
+光厂 VJshi Spider v1.3
+修复：分类无法加载 / 播放
+- 纯 Python 过 acw_sc__v2
+- 识别阿里云滑动验证，支持 extend 注入 Cookie
+- 加强列表与 MP4 解析
+
+extend 示例：
+  "acw_sc__v2=xxx; acw_tc=yyy; tfstk=zzz"
+  或 JSON {"cookie":"..."}
 """
 import json
 import re
@@ -25,7 +32,7 @@ except ImportError:
         def init(self, extend=""):
             pass
 
-# 与站内挑战脚本一致（1-based 位置映射）
+
 _ACW_POS = [
     0x0f, 0x23, 0x1d, 0x18, 0x21, 0x10, 0x01, 0x26, 0x0a, 0x09,
     0x13, 0x1f, 0x28, 0x1b, 0x16, 0x17, 0x19, 0x0d, 0x06, 0x0b,
@@ -36,7 +43,6 @@ _ACW_MASK = '3000176000856006061501533003690027800375'
 
 
 def solve_acw_sc_v2(arg1):
-    """纯 Python 计算 acw_sc__v2 Cookie"""
     if not arg1 or len(arg1) < 40:
         return ''
     out = [''] * len(_ACW_POS)
@@ -65,6 +71,7 @@ class Spider(BaseSpider):
             'Chrome/122.0.0.0 Safari/537.36'
         )
         self._cookie = ''
+        self._extra_cookie = ''
         self._cookie_ts = 0
         self.channels = {
             'shipinsucai': {'name': '视频素材', 'path': '/so/shipinsucai.html'},
@@ -88,10 +95,33 @@ class Spider(BaseSpider):
         return '光厂视频'
 
     def init(self, extend=""):
+        self._parse_extend(extend)
         try:
             self._ensure_cookie(force=True)
         except Exception as e:
             print('init cookie:', e)
+
+    def _parse_extend(self, extend):
+        if not extend:
+            return
+        s = extend if isinstance(extend, str) else json.dumps(extend, ensure_ascii=False)
+        s = s.strip()
+        if not s:
+            return
+        if s.startswith('{'):
+            try:
+                j = json.loads(s)
+                if j.get('cookie'):
+                    self._extra_cookie = str(j['cookie'])
+                if j.get('acw_sc__v2'):
+                    self._cookie = str(j['acw_sc__v2'])
+            except Exception:
+                pass
+            return
+        self._extra_cookie = s
+        m = re.search(r'acw_sc__v2=([0-9a-fA-F]+)', s)
+        if m:
+            self._cookie = m.group(1)
 
     def _headers(self, with_cookie=True):
         h = {
@@ -101,8 +131,14 @@ class Spider(BaseSpider):
             'Accept-Language': 'zh-CN,zh;q=0.9',
             'Accept-Encoding': 'gzip, deflate',
         }
-        if with_cookie and self._cookie:
-            h['Cookie'] = 'acw_sc__v2=' + self._cookie
+        if with_cookie:
+            parts = []
+            if self._cookie:
+                parts.append('acw_sc__v2=' + self._cookie)
+            if self._extra_cookie:
+                parts.append(self._extra_cookie)
+            if parts:
+                h['Cookie'] = '; '.join(parts)
         return h
 
     def _decode_body(self, raw):
@@ -121,12 +157,9 @@ class Spider(BaseSpider):
         try:
             if requests is not None:
                 r = requests.get(
-                    url,
-                    headers=self._headers(with_cookie),
-                    timeout=18,
-                    allow_redirects=True,
+                    url, headers=self._headers(with_cookie),
+                    timeout=18, allow_redirects=True,
                 )
-                # requests 自动解压 gzip
                 return r.text or ''
             req = urllib.request.Request(url, headers=self._headers(with_cookie))
             resp = urllib.request.urlopen(req, timeout=18)
@@ -135,13 +168,25 @@ class Spider(BaseSpider):
             print('raw_get error:', url, e)
             return ''
 
+    def _is_acw_challenge(self, html):
+        return bool(html and 'var arg1=' in html and len(html) < 25000)
+
+    def _is_slide_challenge(self, html):
+        if not html:
+            return False
+        if re.search(r'/watch/\d+\.html', html):
+            return False
+        return bool(re.search(
+            r'滑动验证|Page Verification|Please slide to verify|nocaptcha|CF_APP_WAF|AWSC\.use',
+            html,
+        ))
+
     def _ensure_cookie(self, force=False):
         if not force and self._cookie and (time.time() - self._cookie_ts) < 3000:
             return self._cookie
         html = self._raw_get(self.siteUrl + '/', with_cookie=False)
         m = re.search(r"var arg1=['\"]([A-Fa-f0-9]+)['\"]", html or '')
         if not m:
-            # 无挑战，可能已可访问
             self._cookie_ts = time.time()
             return self._cookie
         val = solve_acw_sc_v2(m.group(1))
@@ -149,15 +194,12 @@ class Spider(BaseSpider):
             self._cookie = val
             self._cookie_ts = time.time()
             print('acw_sc__v2 ok', val[:16])
-        else:
-            print('acw_sc__v2 solve failed')
         return self._cookie
 
     def fetch_text(self, url):
         self._ensure_cookie()
         html = self._raw_get(url, with_cookie=True)
-        # 仍被拦则强制重算 Cookie 再试一次
-        if html and 'var arg1=' in html and len(html) < 20000:
+        if self._is_acw_challenge(html):
             self._ensure_cookie(force=True)
             html = self._raw_get(url, with_cookie=True)
         return html or ''
@@ -174,15 +216,14 @@ class Spider(BaseSpider):
 
     def _parse_list(self, html):
         videos = []
-        if not html:
-            return videos
-        if 'var arg1=' in html and len(html) < 20000:
-            print('parse_list: still challenge page, len=', len(html))
+        if not html or self._is_acw_challenge(html) or self._is_slide_challenge(html):
+            if html and self._is_slide_challenge(html):
+                print('parse_list: 阿里云滑动验证，请在 extend 注入浏览器 Cookie')
             return videos
         seen = set()
         re_card = re.compile(
-            r'href="(/watch/(\d+)\.html)[^"]*"[\s\S]{0,1500}?'
-            r'<img[^>]+src="([^"]+)"[^>]*alt="([^"]*)"',
+            r'href="(/watch/(\d+)\.html)[^"]*"[\s\S]{0,2000}?'
+            r'<img[^>]+(?:src|data-src|data-original)="([^"]+)"[^>]*(?:alt="([^"]*)")?',
             re.I,
         )
         for m in re_card.finditer(html):
@@ -197,6 +238,24 @@ class Spider(BaseSpider):
                 'vod_pic': self._abs(m.group(3)),
                 'vod_remarks': '',
             })
+        if len(videos) < 6:
+            re2 = re.compile(
+                r'<img[^>]+(?:src|data-src)="([^"]+)"[^>]*(?:alt="([^"]*)")?'
+                r'[\s\S]{0,800}?href="/watch/(\d+)\.html',
+                re.I,
+            )
+            for m in re2.finditer(html):
+                vid = m.group(3)
+                if vid in seen:
+                    continue
+                seen.add(vid)
+                title = (m.group(2) or '').strip() or ('素材 #%s' % vid)
+                videos.append({
+                    'vod_id': vid,
+                    'vod_name': title[:100],
+                    'vod_pic': self._abs(m.group(1)),
+                    'vod_remarks': '',
+                })
         if len(videos) < 6:
             for m in re.finditer(r'href="(/watch/(\d+)\.html)[^"]*"', html):
                 vid = m.group(2)
@@ -220,13 +279,7 @@ class Spider(BaseSpider):
             if pg <= 1:
                 return self.siteUrl + path
             return self.siteUrl + path + '?page=' + str(pg)
-        if q:
-            params = {'wd': q}
-            if pg > 1:
-                params['page'] = pg
-            return self.siteUrl + '/so?' + urllib.parse.urlencode(params)
-        # 未知 tid 当关键词
-        params = {'wd': str(tid)}
+        params = {'wd': q or str(tid)}
         if pg > 1:
             params['page'] = pg
         return self.siteUrl + '/so?' + urllib.parse.urlencode(params)
@@ -254,7 +307,7 @@ class Spider(BaseSpider):
             url = self._list_url(tid, pg)
             print('category url:', url)
             html = self.fetch_text(url)
-            print('category html len:', len(html or ''))
+            print('category html len:', len(html or ''), 'slide=', self._is_slide_challenge(html))
             videos = self._parse_list(html)
             print('category items:', len(videos))
         except Exception as e:
@@ -290,11 +343,36 @@ class Spider(BaseSpider):
             'total': 9999 if videos else 0,
         }
 
+    def _extract_play(self, html):
+        play_parts = []
+        seen = set()
+        for m in re.finditer(r'https?://[^"\'\s<>\\]+\.mp4[^"\'\s<>\\]*', html or '', re.I):
+            u = m.group(0).replace('\\/', '/').rstrip('\\\'";')
+            if u in seen:
+                continue
+            seen.add(u)
+            label = '预览'
+            if 'lmp4' in u:
+                label = '低清预览'
+            elif 'mp4.vjshi' in u or 'hmp4' in u:
+                label = '高清预览'
+            play_parts.append('%s$%s' % (label, u))
+        return play_parts
+
     def detailContent(self, ids):
         vid = re.sub(r'\D', '', str((ids or [''])[0])) or str((ids or [''])[0])
         try:
             url = '%s/watch/%s.html' % (self.siteUrl, vid)
             html = self.fetch_text(url)
+            if self._is_slide_challenge(html):
+                return {'list': [{
+                    'vod_id': vid,
+                    'vod_name': '素材 #%s' % vid,
+                    'vod_pic': '',
+                    'vod_content': '站点开启滑动验证，请在源配置 extend 中注入浏览器 Cookie 后重试。',
+                    'vod_play_from': '光厂',
+                    'vod_play_url': '网页$%s' % url,
+                }]}
             name = '素材 #%s' % vid
             pic = ''
             desc = ''
@@ -320,21 +398,7 @@ class Spider(BaseSpider):
             if m:
                 desc = m.group(1).strip()[:400]
 
-            play_parts = []
-            seen = set()
-            for m in re.finditer(
-                r'https?://[^"\'\s<>\\]+\.mp4[^"\'\s<>\\]*', html or '', re.I
-            ):
-                u = m.group(0).replace('\\/', '/')
-                if u in seen:
-                    continue
-                seen.add(u)
-                label = '预览'
-                if 'lmp4' in u:
-                    label = '低清预览'
-                elif 'mp4.vjshi' in u:
-                    label = '高清预览'
-                play_parts.append('%s$%s' % (label, u))
+            play_parts = self._extract_play(html)
             if not play_parts:
                 play_parts.append('网页$%s' % url)
 
@@ -361,13 +425,11 @@ class Spider(BaseSpider):
             return {'parse': 0, 'url': play, 'header': header}
         if play.startswith('http'):
             html = self.fetch_text(play)
-            m = re.search(
-                r'https?://[^"\'\s<>\\]+\.mp4[^"\'\s<>\\]*', html or '', re.I
-            )
-            if m:
+            parts = self._extract_play(html)
+            if parts:
                 return {
                     'parse': 0,
-                    'url': m.group(0).replace('\\/', '/'),
+                    'url': parts[0].split('$')[-1],
                     'header': header,
                 }
             return {'parse': 1, 'jx': '1', 'url': play, 'header': header}
@@ -375,13 +437,11 @@ class Spider(BaseSpider):
             self.siteUrl, re.sub(r'\D', '', play) or play
         )
         html = self.fetch_text(page)
-        m = re.search(
-            r'https?://[^"\'\s<>\\]+\.mp4[^"\'\s<>\\]*', html or '', re.I
-        )
-        if m:
+        parts = self._extract_play(html)
+        if parts:
             return {
                 'parse': 0,
-                'url': m.group(0).replace('\\/', '/'),
+                'url': parts[0].split('$')[-1],
                 'header': header,
             }
         return {'parse': 1, 'jx': '1', 'url': page, 'header': header}
@@ -401,10 +461,6 @@ if __name__ == '__main__':
     spider.init()
     print('home', json.dumps(spider.homeContent(False), ensure_ascii=False)[:180])
     r = spider.categoryContent('shipinsucai', 1, False, {})
-    print('list', len(r.get('list') or []), (r.get('list') or [{}])[0].get('vod_name'))
-    r2 = spider.searchContentPage('自然', False, 1)
-    print('search', len(r2.get('list') or []), (r2.get('list') or [{}])[0].get('vod_name'))
+    print('list', len(r.get('list') or []))
     if r.get('list'):
-        d = spider.detailContent([r['list'][0]['vod_id']])
-        print('detail', (d.get('list') or [{}])[0].get('vod_name'))
-        print('play', (d.get('list') or [{}])[0].get('vod_play_url', '')[:100])
+        print('first', r['list'][0].get('vod_name'))

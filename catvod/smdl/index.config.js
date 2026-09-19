@@ -93,7 +93,8 @@ var index_config_default = {
   },
   danmu: {
     urls: [{ address: `http://${getIPAddress()}:9321`, name: "内置" }],
-    autoPush: true
+    autoPush: true,
+    excludeSites: ["live"]
   },
   t4: {
     list: []

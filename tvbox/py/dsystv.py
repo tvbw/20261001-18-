@@ -21,7 +21,6 @@ class Spider(Spider):
         self.categories = [{"type_id": "1", "type_name": "电影"}, {"type_id": "2", "type_name": "电视剧"}, {"type_id": "3", "type_name": "综艺"}, {"type_id": "4", "type_name": "动漫"}, {"type_id": "44", "type_name": "短剧"}]
         self.subs = {"1": [["全部", "1"], ["动作片", "5"], ["喜剧片", "10"], ["科幻片", "7"], ["恐怖片", "8"], ["战争片", "9"], ["动画片", "41"], ["剧情片", "12"], ["爱情片", "6"], ["纪录片", "11"]],
                      "2": [["全部", "2"], ["国产剧", "13"], ["港台剧", "14"], ["欧美剧", "15"], ["日韩剧", "16"], ["海外剧", "42"]]}
-        self.orders = [["默认", ""], ["最近更新", "time"], ["总排行", "hit"], ["月排行", "monthhit"], ["周排行", "weekhit"], ["豆瓣评分", "douban"]]
 
     def _fix(self, u):
         if not u: return ""
@@ -34,6 +33,8 @@ class Spider(Spider):
         try:
             r = requests.get(url, headers=self.headers, timeout=15); r.encoding = "utf-8"
             if r.status_code >= 400: print("[WARN] status=%s url=%s" % (r.status_code, url))
+            if r.status_code == 403 and "Just a moment" in (r.text or ""): return None
+            if r.status_code >= 400: return None
             return r.text
         except requests.exceptions.Timeout: print("[ERROR] 请求超时: %s" % url)
         except requests.exceptions.ConnectionError: print("[ERROR] 连接错误: %s" % url)
@@ -108,29 +109,73 @@ class Spider(Spider):
     def homeContent(self, filter):
         fl = {}
         for c in self.categories:
-            f = []
             if c["type_id"] in self.subs:
-                f.append({"key": "tid", "name": "类型", "value": [{"n": s[0], "v": s[1]} for s in self.subs[c["type_id"]]]})
-            f.append({"key": "order", "name": "排序", "value": [{"n": o[0], "v": o[1]} for o in self.orders]})
-            fl[c["type_id"]] = f
+                fl[c["type_id"]] = [{"key": "tid", "name": "类型", "value": [{"n": s[0], "v": s[1]} for s in self.subs[c["type_id"]]]}]
         return {"class": self.categories, "list": self._parse_list(self._get("/index.html")), "filters": fl}
 
     def homeVideoContent(self): return {"list": self._parse_list(self._get("/index.html"))}
 
+    def _category_page_url(self, tid):
+        return "/frim/index%s.html" % tid
+
+    def _parse_rss(self, xml_text):
+        if not xml_text or etree is None: return []
+        try:
+            root = etree.fromstring(xml_text.encode("utf-8") if isinstance(xml_text, str) else xml_text)
+        except Exception: return []
+        out, seen = [], set()
+        for it in root.xpath('//item'):
+            link = "".join(it.xpath('./link/text()')[:1]).strip()
+            m = re.search(r'/movie/index(\d+)\.html', link)
+            if not m or m.group(1) in seen: continue
+            seen.add(m.group(1))
+            name = "".join(it.xpath('./title/text()')[:1]).strip()
+            if not name: continue
+            thumb = it.xpath('./*[local-name()="thumbnail"]/@url')
+            note = "".join(it.xpath('./description/text()')[:1]).strip()
+            out.append({"vod_id": m.group(1), "vod_name": name, "vod_pic": self._fix(thumb[0].strip() if thumb else ""), "vod_remarks": note[:40]})
+        return out
+
     def categoryContent(self, tid, pg, filter, extend):
         pg = str(pg or "1"); ex = extend or {}
-        real = ex.get("tid") or tid
-        url = "/search.php?searchtype=5&tid=%s&page=%s" % (real, pg)
-        if ex.get("order"): url += "&order=" + ex["order"]
-        lst = self._parse_list(self._get(url))
-        return {"page": int(pg), "pagecount": int(pg) + 1 if lst else int(pg), "limit": 24, "total": 999999, "list": lst}
+        real = str(ex.get("tid") or tid)
+        if str(pg) != "1": return {"page": int(pg), "pagecount": 1, "limit": 24, "total": 0, "list": []}
+        lst = self._parse_list(self._get(self._category_page_url(real)))
+        if not lst:
+            lst = self._parse_rss(self._get("/xml/rss.xml"))
+            if lst: return {"page": 1, "pagecount": 1, "limit": 24, "total": len(lst), "list": lst}
+        return {"page": 1, "pagecount": 1, "limit": 24, "total": len(lst), "list": lst}
 
     def searchContent(self, key, quick, pg="1"):
         pg = str(pg or "1")
-        lst = self._parse_list(self._get("/search.php?searchword=%s&page=%s" % (quote(key), pg)))
-        if not lst and pg == "1":
-            lst = self._parse_list(self._post("/search.php", {"searchword": key, "searchtype": "1"}))
-        return {"list": lst, "page": int(pg)}
+        if str(pg) != "1": return {"list": [], "page": int(pg)}
+        name = str(key or "").strip()
+        if not name: return {"list": [], "page": 1}
+        html = self._get("/search.php?searchword=%s&page=1" % quote(name))
+        lst = self._parse_list(html) if html else []
+        if lst: return {"list": lst, "page": 1}
+        rss = self._parse_rss(self._get("/xml/rss.xml"))
+        hit = [x for x in rss if name in x.get("vod_name", "")]
+        if hit: return {"list": hit, "page": 1}
+        hot = self._hot_search()
+        hit = [x for x in hot if name in x.get("vod_name", "")]
+        return {"list": hit, "page": 1}
+
+    def _hot_search(self):
+        try:
+            text = self._get("/api/app/data/hot-search.json?v=30")
+            if not text: return []
+            data = json.loads(text)
+            items = ((data.get("data") or {}).get("items")) if isinstance(data, dict) else None
+            if not items and isinstance(data, dict): items = data.get("items") or []
+            out = []
+            for x in items or []:
+                name = str(x.get("name", "")).strip()
+                vid = str(x.get("id", "")).strip()
+                if not name or not vid: continue
+                out.append({"vod_id": vid, "vod_name": name, "vod_pic": "", "vod_remarks": ("豆瓣%s" % x.get("douban")) if x.get("douban") else ""})
+            return out
+        except Exception: return []
 
     def detailContent(self, ids):
         vid = re.sub(r'\D', '', str(ids[0]))
