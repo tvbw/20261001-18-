@@ -530,6 +530,13 @@
             "api": "./py/千千音乐.py"
         },
 		{
+            "key": "酷我音乐在线",
+            "name": "🎵酷我音乐在线",
+            "type": 3,
+			"api": "csp_Nostr",
+            "homePage": "https://xcz.iptv365.org/酷我音乐.html"
+        },
+		{
             "key": "5",
             "name": "🍊小橙子影视",
             "type": 3,
@@ -35837,6 +35844,18 @@
             "name": "⚽88看球",
             "type": 3,
             "api": "csp_Sports88",
+            "searchable": 0,
+            "quickSearch": 0,
+            "changeable": 0,
+            "style": {
+                "type": "list"
+            }
+        },
+		{
+            "key": "飞球体育",
+            "name": "⚽飞球体育",
+            "type": 3,
+            "api": "csp_SportsFeiqiu",
             "searchable": 0,
             "quickSearch": 0,
             "changeable": 0,

@@ -3657,6 +3657,9 @@ TVI Ficção,
 Weeds / Nurse Jackie,
 Сити Эдем ТелеНовелла,
 Смотрим Честный Детектив,
+Pravah Picture HD,
+Romedy Now,
+CBC Drama,
 
 电视剧🔁,#genre#
 科幻动作,
@@ -6886,6 +6889,11 @@ Viaplay TV (Finland),
 Fox Sports 2,
 Polsat Sport Premium 1,
 Polsat Sport Premium 2,
+Alkass Four,
+Alkass One,
+Alkass SHOOF,
+Alkass Six,
+Alkass Two,
 
 少儿,#genre#
 央视少儿,
@@ -7497,6 +7505,9 @@ Weather Spy,
 中国气象,
 Polsat News,
 Relevant TV,
+JK 24x7 News,
+Onkar Only Truth TV,
+Raj Pariwar,
 
 财经,#genre#
 央视财经,
