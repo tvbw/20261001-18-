@@ -1,352 +1,187 @@
 # -*- coding: utf-8 -*-
-# 云朵影视 - y23xxa23duo12.xyz
-# by TRAE
-# Vue SPA + 苹果CMS API + 解析播放 (需登录Cookie)
 import re
 import sys
 import json
 import time
-import os
+import random
 import hashlib
 import urllib.request
-import urllib.error
-import urllib.parse
-import ssl
 from urllib.parse import quote
 
 sys.path.append('..')
 from base.spider import Spider
 
+_UA = "okhttp/4.12.0"
+_FINGER = "SF-F5F11CB15897115AE6BCFE063C288F730CA865588F572C780A3E8477D0DD3776"
+_SK = "SK-sk_13oXDZ7u9j2Tk1c0cawWVFfO"
+_DEVICE_UUID = "uuid-a43a3421-2704-4deb-afe4-136aed229307"
+_USER_TOKEN = "ZThkNjRlYzhlNmZmNzZkMDI1ZDhhMTVhNzA2YjFlN2YxYjQwMTA5NzBkZThiN2NlZTk0ZGYzOWU2MmQ5NzQ3Y3wxMzI5NnxmemNyeW18MTc4ODM1ODE1Ng=="
+
+# 分类：type_id(1/2/3/4) -> filter/vod 的 type_name
+_CATS = [("1", "电影"), ("2", "剧集"), ("3", "动漫"), ("4", "综艺")]
+
+# 播放源顺序：易被防盗链拦截的分片源排到末尾(用户仍可手切)
+_REORDER = ("IMDB", "CO4K", "qsvip")
+
 
 class Spider(Spider):
-
-    # ---- decode/url 签名 (逆向自 web_app_wasm) ----
-    DEV = "com.web.player.6c3b998c"
-    ID = "WF-9e14d752872961ca1f5f125a6607c2712535b8d8b5c1294423c2da8436a41000"
-    SK = "WEB-df5526941b0e3165d0a8485119ca3628b45f2b4a5c4b888bf01645a7060e1638"
 
     def getName(self):
         return "云朵影视"
 
     def init(self, extend=""):
-        self.host = "https://y23xxa23duo12.xyz"
-        self.api = f"{self.host}/api.php/web"
-        self.ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        self.web_sign = "yda81x6d9ad3c4s"
-        self.x_client = "8f3d2a1c7b6e5d4c9a0b1f2e3d4c5b6a"
-        # 登录账号
-        self.username = "lcgz"
-        self.password = "xi320421"
-        # Session cookie缓存
-        self._session_cookie = None
-        # SSL
-        self._ssl_ctx = ssl.create_default_context()
-        self._ssl_ctx.check_hostname = False
-        self._ssl_ctx.verify_mode = ssl.CERT_NONE
+        self.host = "http://154.21.198.181:8002"
+        try:
+            text = str(extend or "").strip()
+            if text.startswith("{"):
+                ext = json.loads(text)
+                if isinstance(ext, dict) and ext.get("host"):
+                    self.host = str(ext.get("host")).rstrip("/")
+        except Exception:
+            pass
+        self.ua = _UA
+        # 集 ID -> 影片 id，player 跨线路回落用(集 ID 不携带影片 id)
+        self._ep2vid = {}
+        # 影片 id -> [(flag, 首集ID)] 供跨线路回落
+        self._lines = {}
 
     def getDependence(self):
         return []
 
-    def isVideoFormat(self, url):
-        pass
+    # ---- 数据层(app 接口 + RN/Hermes 签名) ----
 
-    def manualVideoCheck(self):
-        pass
+    def _sign_headers(self):
+        t = str(int(time.time() * 1000))
+        nonce = (hashlib.sha256(_DEVICE_UUID.encode()).hexdigest().upper()[:8]
+                 + "".join(str(random.randint(0, 9)) for _ in range(8)))
+        sign = hashlib.sha256((
+            "finger=" + _FINGER + "&id=com.tvcloud.io&nonce=" + nonce
+            + "&sk=" + _SK + "&time=" + t + "&v=4").encode()).hexdigest().upper()
+        return {
+            "User-Agent": self.ua, "accept": "application/json",
+            "x-aid": "com.tvcloud.io", "x-ave": "4",
+            "x-time": t, "x-nonc": nonce, "x-sign": sign,
+            "x-device-id": _DEVICE_UUID, "x-device-brand": "realtek",
+            "x-device-model": "ZIDOO_X9S", "x-client-type": "tv",
+            "x-update-id": "embedded", "x-user-token": _USER_TOKEN,
+        }
 
-    def action(self, action):
-        pass
-
-    def destroy(self):
-        pass
-
-    def _get_cookie(self):
-        """登录获取session cookie"""
-        if self._session_cookie:
-            return self._session_cookie
+    def _fetch(self, path):
+        """发送带认证的HTTP GET请求，返回原始文本"""
         try:
-            login_url = f"{self.api}/account/login"
-            body = json.dumps({"username": self.username, "password": self.password}).encode('utf-8')
-            req = urllib.request.Request(login_url, data=body, method='POST')
-            req.add_header("Content-Type", "application/json")
-            req.add_header("Accept", "application/json")
-            req.add_header("X-Client", self.x_client)
-            req.add_header("web-sign", self.web_sign)
-            req.add_header("User-Agent", self.ua)
-            resp = urllib.request.urlopen(req, timeout=15, context=self._ssl_ctx)
-            # 提取Set-Cookie
-            cookie_header = resp.headers.get("Set-Cookie", "")
-            if cookie_header:
-                # 解析 cookie值
-                for part in cookie_header.split(';'):
-                    part = part.strip()
-                    if '=' in part and 'yunduo_web_session' in part:
-                        self._session_cookie = part
-                        break
-            if not self._session_cookie:
-                # 尝试从headers列表中获取
-                for h in resp.headers.get_all("Set-Cookie") or []:
-                    if 'yunduo_web_session' in h:
-                        val = h.split(';')[0]
-                        self._session_cookie = val
-                        break
-        except Exception as e:
-            print(f'login error: {e}')
-        return self._session_cookie or ""
-
-    def fetch_html(self, url):
-        """发送带认证的HTTP请求"""
-        try:
-            req = urllib.request.Request(url)
-            req.add_header("User-Agent", self.ua)
-            req.add_header("Accept", "application/json")
-            req.add_header("X-Client", self.x_client)
-            req.add_header("web-sign", self.web_sign)
-            cookie = self._get_cookie()
-            if cookie:
-                req.add_header("Cookie", cookie)
-            resp = urllib.request.urlopen(req, timeout=15, context=self._ssl_ctx)
+            req = urllib.request.Request(self.host + path, headers=self._sign_headers())
+            resp = urllib.request.urlopen(req, timeout=20)
             return resp.read().decode('utf-8', errors='replace')
         except Exception as e:
-            print(f'fetch_html error: {e}')
+            print(f'fetch error: {e}')
             return ""
 
-    # ---- decode/url protobuf 工具 ----
-    def _proto_varint(self, n):
-        out = bytearray()
-        while True:
-            x = n & 0x7f
-            n >>= 7
-            if n:
-                out.append(x | 0x80)
-            else:
-                out.append(x)
-                break
-        return bytes(out)
-
-    def _proto_bytes(self, field, data):
-        return self._proto_varint((field << 3) | 2) + self._proto_varint(len(data)) + data
-
-    def _proto_varint_field(self, field, value):
-        return self._proto_varint(field << 3) + self._proto_varint(value)
-
-    def _build_decode_request(self, token, play_from, ts_ms, nonce_hex):
-        sign = hashlib.sha256(
-            ("finger=%s&id=%s&nonce=%s&sk=%s&time=%d&v=1" % (self.ID, self.DEV, nonce_hex, self.SK, ts_ms)).encode()
-        ).hexdigest().upper()
-        req = b""
-        req += self._proto_bytes(1, token.encode())
-        req += self._proto_bytes(2, play_from.encode())
-        req += self._proto_varint_field(3, ts_ms)
-        req += self._proto_bytes(4, nonce_hex.encode())
-        req += self._proto_bytes(5, sign.encode())
-        req += self._proto_bytes(6, self.DEV.encode())
-        req += self._proto_varint_field(7, 1)
-        return req
-
-    def _parse_decode_response(self, data):
-        result = {}
-        i = 0
-        n = len(data)
-        while i < n:
-            key = 0
-            shift = 0
-            while True:
-                b = data[i]; i += 1
-                key |= (b & 0x7f) << shift
-                shift += 7
-                if not (b & 0x80):
-                    break
-            field = key >> 3
-            wire = key & 7
-            if wire == 0:
-                val = 0
-                shift = 0
-                while True:
-                    b = data[i]; i += 1
-                    val |= (b & 0x7f) << shift
-                    shift += 7
-                    if not (b & 0x80):
-                        break
-                result[field] = val
-            elif wire == 2:
-                ln = 0
-                shift = 0
-                while True:
-                    b = data[i]; i += 1
-                    ln |= (b & 0x7f) << shift
-                    shift += 7
-                    if not (b & 0x80):
-                        break
-                result[field] = data[i:i+ln]
-                i += ln
-            elif wire == 1:
-                result[field] = data[i:i+8]; i += 8
-            elif wire == 5:
-                result[field] = data[i:i+4]; i += 4
-            else:
-                break
-        return result
-
-    def _decode_err(self, blob):
-        """解析 decode/url 错误响应的 protobuf: field1=code, field2=msg"""
+    def _api(self, path):
+        raw = self._fetch(path)
+        if not raw:
+            return {}
         try:
-            fields = self._parse_decode_response(blob)
-            code = fields.get(1, 0)
-            msg = fields.get(2, b'')
-            if isinstance(msg, bytes):
-                msg = msg.decode('utf-8', errors='replace')
-            return code, msg
+            return json.loads(raw)
         except Exception:
-            return 0, ""
-    def _decode_url(self, token, play_from):
-        """调用 decode/url 接口, 返回真实可播放地址; 失败返回空串"""
-        try:
-            ts_ms = int(time.time() * 1000)
-            nonce_hex = os.urandom(16).hex()
-            body = self._build_decode_request(token, play_from, ts_ms, nonce_hex)
-            req = urllib.request.Request(f"{self.api}/decode/url", data=body, method='POST')
-            req.add_header("Content-Type", "application/x-protobuf")
-            req.add_header("Accept", "application/x-protobuf")
-            req.add_header("User-Agent", self.ua)
-            req.add_header("X-Client", self.x_client)
-            req.add_header("web-sign", self.web_sign)
-            req.add_header("Referer", f"{self.host}/")
-            req.add_header("Origin", self.host)
-            cookie = self._get_cookie()
-            if cookie:
-                req.add_header("Cookie", cookie)
-            resp = urllib.request.urlopen(req, timeout=20, context=self._ssl_ctx)
-            fields = self._parse_decode_response(resp.read())
-            url = fields.get(3)
-            if url and url.startswith(b"http"):
-                return url.decode('utf-8', errors='replace')
-        except urllib.error.HTTPError as e:
-            # 403等错误响应体也是protobuf: field2为服务端风控提示(如"当前IP已被禁止使用解析服务")
-            try:
-                code, msg = self._decode_err(e.read())
-                if msg:
-                    print(f'decode_url rejected [{code}]: {msg}')
-            except Exception:
-                print(f'decode_url http error: {e}')
-        except Exception as e:
-            print(f'decode_url error: {e}')
-        return ""
+            return {}
 
-    def _play_url(self, vod_id, ep, src_from=""):
-        """构造网站播放页URL, 附带线路(source)与集数(ep)参数"""
-        url = f"{self.host}/play/{vod_id}?ep={ep}"
-        if src_from:
-            url += f"&source={quote(src_from)}"
-        return url
-
-    def _ref_host(self, url):
-        """从播放链接中提取 scheme://host 作为 Referer"""
+    def _decode(self, ep, flag):
+        """单次 decode，返回 (is_ok, url_or_reason)。"""
+        path = "/api.php/app/decode/url/?url={}&vodFrom={}&_t={}".format(
+            quote(ep), quote(flag), int(time.time() * 1000))
+        raw = self._fetch(path)
         try:
-            pr = urllib.parse.urlparse(url)
-            if pr.scheme and pr.netloc:
-                return f"{pr.scheme}://{pr.netloc}"
+            d = json.loads(raw)
+            u = (d.get("data") or "").strip()
+            if d.get("code") == 1 and u.startswith("http"):
+                return True, u
+            return False, u or raw[:80]
         except Exception:
-            pass
-        return self.host
+            return False, raw[:80]
+
+    def _clean(self, s):
+        return (s or "").replace("$", "＄").replace("#", "＃").strip()
+
+    def _card(self, v):
+        return {
+            "vod_id": str(v.get("vod_id") or ""),
+            "vod_name": str(v.get("vod_name") or ""),
+            "vod_pic": v.get("vod_pic") or "",
+            "vod_remarks": str(v.get("vod_remarks") or ""),
+        }
+
+    def _dedup(self, items):
+        seen, out = set(), []
+        for it in items:
+            vid = str(it.get("vod_id") or "")
+            if not vid or vid in seen:
+                continue
+            seen.add(vid)
+            out.append(self._card(it))
+        return out
+
+    # ---- 契约方法 ----
 
     def homeContent(self, filter):
-        result = {"class": [], "filters": {}, "list": []}
+        classes = [{"type_id": tid, "type_name": name} for tid, name in _CATS]
+        result = {"class": classes, "filters": self._build_filters(), "list": []}
+        cards = []
+        j = self._api("/api.php/app/index/home")
+        d = j.get("data") or {}
+        for v in (d.get("recommend") or []):
+            if v.get("vod_id"):
+                cards.append(v)
+        jr = self._api("/api.php/app/ranking/list")
         try:
-            html = self.fetch_html(self.api + "/index/home")
-            if html:
-                data = json.loads(html)
-                if data.get("code") == 200 and data.get("data"):
-                    home = data["data"]
-                    categories = home.get("categories", [])
-                    for cat in categories:
-                        type_name = cat.get("type_name", "")
-                        result["class"].append({
-                            "type_name": type_name,
-                            "type_id": type_name,
-                        })
-                    result["filters"] = self._build_filters()
-                    seen = set()
-                    for cat in categories:
-                        videos = cat.get("videos", [])
-                        for v in videos:
-                            vid = str(v.get("vod_id", ""))
-                            if vid and vid not in seen:
-                                seen.add(vid)
-                                result["list"].append({
-                                    "vod_id": vid,
-                                    "vod_name": v.get("vod_name", ""),
-                                    "vod_pic": v.get("vod_pic", ""),
-                                    "vod_remarks": v.get("vod_remarks", ""),
-                                })
-                    for rec in home.get("recommend", []):
-                        vid = str(rec.get("vod_id", ""))
-                        if vid and vid not in seen:
-                            seen.add(vid)
-                            result["list"].append({
-                                "vod_id": vid,
-                                "vod_name": rec.get("vod_name", ""),
-                                "vod_pic": rec.get("vod_pic", ""),
-                                "vod_remarks": rec.get("vod_remarks", ""),
-                            })
-        except Exception as e:
-            print(f'homeContent error: {e}')
+            for rk in (jr.get("data") or {}).get("rankings") or []:
+                for v in (rk.get("videos") or []):
+                    if v.get("vod_id"):
+                        cards.append(v)
+        except Exception:
+            pass
+        if len(cards) < 20:
+            tf = self._api("/api.php/app/filter/vod?type_name=%E7%94%B5%E5%BD%B1&page=1&limit=24&sort=hits")
+            for v in (tf.get("data") or []):
+                if v.get("vod_id"):
+                    cards.append(v)
+        result["list"] = self._dedup(cards)
         return result
 
     def homeVideoContent(self):
-        pass
+        result = {"list": []}
+        items = []
+        j = self._api("/api.php/app/index/home")
+        d = j.get("data") or {}
+        for v in (d.get("recommend") or []):
+            if v.get("vod_id"):
+                items.append(v)
+        if len(items) < 20:
+            for rk in ((self._api("/api.php/app/ranking/list").get("data") or {}).get("rankings") or []):
+                for v in (rk.get("videos") or []):
+                    if v.get("vod_id"):
+                        items.append(v)
+        result["list"] = self._dedup(items)
+        return result
 
     def _build_filters(self):
         years = [{"n": "全部", "v": ""}]
         for y in range(2026, 2005, -1):
             years.append({"n": str(y), "v": str(y)})
 
-        areas = [
-            {"n": "全部", "v": ""},
-            {"n": "中国大陆", "v": "中国大陆"}, {"n": "中国香港", "v": "中国香港"},
-            {"n": "中国台湾", "v": "中国台湾"}, {"n": "美国", "v": "美国"},
-            {"n": "日本", "v": "日本"}, {"n": "韩国", "v": "韩国"},
-            {"n": "泰国", "v": "泰国"}, {"n": "英国", "v": "英国"},
-            {"n": "法国", "v": "法国"}, {"n": "印度", "v": "印度"},
-            {"n": "其他", "v": "其他"},
-        ]
+        areas = ([{"n": "全部", "v": ""}] +
+                 [{"n": x, "v": x} for x in
+                  ("中国大陆", "中国香港", "中国台湾", "美国", "日本", "韩国", "泰国", "英国", "法国", "印度", "其他")])
 
-        sorts = [
-            {"n": "时间", "v": "time"},
-            {"n": "人气", "v": "hits"},
-            {"n": "评分", "v": "score"},
-        ]
+        sorts = [{"n": "时间", "v": "time"}, {"n": "人气", "v": "hits"}, {"n": "评分", "v": "score"}]
 
-        movie_class = [
-            {"n": "全部", "v": ""},
-            {"n": "动作", "v": "动作"}, {"n": "喜剧", "v": "喜剧"},
-            {"n": "爱情", "v": "爱情"}, {"n": "科幻", "v": "科幻"},
-            {"n": "恐怖", "v": "恐怖"}, {"n": "剧情", "v": "剧情"},
-            {"n": "战争", "v": "战争"}, {"n": "犯罪", "v": "犯罪"},
-            {"n": "奇幻", "v": "奇幻"}, {"n": "冒险", "v": "冒险"},
-            {"n": "悬疑", "v": "悬疑"}, {"n": "动画", "v": "动画"},
-            {"n": "古装", "v": "古装"}, {"n": "武侠", "v": "武侠"},
-            {"n": "历史", "v": "历史"}, {"n": "家庭", "v": "家庭"},
-            {"n": "惊悚", "v": "惊悚"},
-        ]
-
-        tv_class = [
-            {"n": "全部", "v": ""},
-            {"n": "剧情", "v": "剧情"}, {"n": "喜剧", "v": "喜剧"},
-            {"n": "爱情", "v": "爱情"}, {"n": "科幻", "v": "科幻"},
-            {"n": "悬疑", "v": "悬疑"}, {"n": "恐怖", "v": "恐怖"},
-            {"n": "古装", "v": "古装"}, {"n": "动作", "v": "动作"},
-            {"n": "家庭", "v": "家庭"}, {"n": "战争", "v": "战争"},
-            {"n": "犯罪", "v": "犯罪"}, {"n": "历史", "v": "历史"},
-            {"n": "冒险", "v": "冒险"}, {"n": "奇幻", "v": "奇幻"},
-            {"n": "国产剧", "v": "国产剧"},
-        ]
-
-        anime_class = [
-            {"n": "全部", "v": ""},
-            {"n": "国产动漫", "v": "国产动漫"}, {"n": "日本动漫", "v": "日本动漫"},
-            {"n": "欧美动漫", "v": "欧美动漫"}, {"n": "海外动漫", "v": "海外动漫"},
-            {"n": "其他", "v": "其他"},
-        ]
+        movie_class = ([{"n": "全部", "v": ""}] +
+                       [{"n": x, "v": x} for x in
+                        ("动作", "喜剧", "爱情", "科幻", "恐怖", "剧情", "战争", "犯罪", "奇幻", "冒险", "悬疑", "动画", "古装", "武侠", "历史", "家庭", "惊悚")])
+        tv_class = ([{"n": "全部", "v": ""}] +
+                    [{"n": x, "v": x} for x in
+                     ("剧情", "喜剧", "爱情", "科幻", "悬疑", "恐怖", "古装", "动作", "家庭", "战争", "犯罪", "历史", "冒险", "奇幻", "国产剧")])
+        anime_class = ([{"n": "全部", "v": ""}] +
+                       [{"n": x, "v": x} for x in ("国产动漫", "日本动漫", "欧美动漫", "海外动漫", "其他")])
 
         variety_filters = [
             {"key": "area", "name": "地区", "value": areas},
@@ -355,214 +190,166 @@ class Spider(Spider):
         ]
 
         return {
-            "电影": [
-                {"key": "class", "name": "类型", "value": movie_class},
-                {"key": "area", "name": "地区", "value": areas},
-                {"key": "sort", "name": "排序", "value": sorts},
-                {"key": "year", "name": "年份", "value": years},
-            ],
-            "剧集": [
-                {"key": "class", "name": "类型", "value": tv_class},
-                {"key": "area", "name": "地区", "value": areas},
-                {"key": "sort", "name": "排序", "value": sorts},
-                {"key": "year", "name": "年份", "value": years},
-            ],
+            "电影": [{"key": "class", "name": "类型", "value": movie_class},
+                    {"key": "area", "name": "地区", "value": areas},
+                    {"key": "sort", "name": "排序", "value": sorts},
+                    {"key": "year", "name": "年份", "value": years}],
+            "剧集": [{"key": "class", "name": "类型", "value": tv_class},
+                    {"key": "area", "name": "地区", "value": areas},
+                    {"key": "sort", "name": "排序", "value": sorts},
+                    {"key": "year", "name": "年份", "value": years}],
             "综艺": variety_filters,
-            "动漫": [
-                {"key": "class", "name": "类型", "value": anime_class},
-                {"key": "sort", "name": "排序", "value": sorts},
-                {"key": "year", "name": "年份", "value": years},
-            ],
+            "动漫": [{"key": "class", "name": "类型", "value": anime_class},
+                    {"key": "sort", "name": "排序", "value": sorts},
+                    {"key": "year", "name": "年份", "value": years}],
         }
 
     def categoryContent(self, tid, pg, filter, extend):
         page = int(pg) if pg else 1
         result = {"list": [], "page": page, "pagecount": 1, "limit": 24, "total": 0}
-        try:
-            url = f"{self.api}/filter/vod?type_name={quote(tid)}&page={page}&sort=hits"
-            if extend:
-                area = extend.get("area", "")
-                if area and area != "全部":
-                    url += f"&area={quote(area)}"
-                cls = extend.get("class", "")
-                if cls and cls != "全部":
-                    url += f"&class={quote(cls)}"
-                year = extend.get("year", "")
-                if year and year != "全部":
-                    url += f"&year={year}"
-                sort = extend.get("sort", "")
-                if sort:
-                    url += f"&sort={sort}"
-
-            html = self.fetch_html(url)
-            if html:
-                data = json.loads(html)
-                if data.get("code") == 200 and isinstance(data.get("data"), list):
-                    items = data["data"]
-                    for v in items:
-                        result["list"].append({
-                            "vod_id": str(v.get("vod_id", "")),
-                            "vod_name": v.get("vod_name", ""),
-                            "vod_pic": v.get("vod_pic", ""),
-                            "vod_remarks": v.get("vod_remarks", ""),
-                        })
-                    # 使用API返回的分页数据
-                    api_total = data.get("total", 0)
-                    api_pagecount = data.get("pageCount", 0)
-                    if api_total and api_total > 0:
-                        result["total"] = api_total
-                    else:
-                        result["total"] = len(items)
-                    if api_pagecount and api_pagecount > 0:
-                        result["pagecount"] = api_pagecount
-                    elif items and len(items) >= 20:
-                        result["pagecount"] = page + 1
-                    else:
-                        result["pagecount"] = page
-        except Exception as e:
-            print(f'categoryContent error: {e}')
+        # type_id 或中文名都能定位 type_name
+        name = dict(_CATS).get(str(tid), "")
+        if not name:
+            for _tid, nm in _CATS:
+                if nm == str(tid):
+                    name = nm
+                    break
+        if not name:
+            name = "电影"
+        url = "/api.php/app/filter/vod?type_name={}&page={}&limit=24&sort=hits".format(quote(name), page)
+        if extend:
+            area = extend.get("area", "")
+            if area and area != "全部":
+                url += f"&area={quote(area)}"
+            cls = extend.get("class", "")
+            if cls and cls != "全部":
+                url += f"&class={quote(cls)}"
+            year = extend.get("year", "")
+            if year and year != "全部":
+                url += f"&year={year}"
+            sort = extend.get("sort", "")
+            if sort:
+                url += f"&sort={sort}"
+        j = self._api(url)
+        lst = j.get("data")
+        if not isinstance(lst, list):
+            lst = []
+        result["list"] = [self._card(v) for v in lst if v.get("vod_id")]
+        total = int(j.get("total") or len(result["list"]) or 0)
+        pagecount = int(j.get("pageCount") or 0)
+        if total > 0:
+            result["total"] = total
+        result["pagecount"] = pagecount or max(1, -(-total // 24)) if total else 1
         return result
 
     def detailContent(self, ids):
         result = {"list": []}
-        try:
-            vod_id = ids[0]
-            # 使用 detail_v2 获取详情和播放信息
-            html = self.fetch_html(f"{self.api}/vod/detail_v2?vod_id={vod_id}")
-            if html:
-                data = json.loads(html)
-                if data.get("code") == 200 and data.get("data"):
-                    d = data["data"]
-                    detail = d.get("detail", {})
-                    playback = d.get("playback", {})
-                    sources = playback.get("sources", [])
+        vid = str(ids[0]).split(",")[0].split("?")[0].strip()
+        j = self._api("/api.php/app/vod/get_detail?vod_id=" + quote(vid))
+        data = j.get("data")
+        if not isinstance(data, list) or not data:
+            return result
+        v = data[0]
+        pf = (v.get("vod_play_from") or "").split("$$$")
+        pu = (v.get("vod_play_url") or "").split("$$$")
+        epmap = {}
+        for i, f in enumerate(pf):
+            if f and i < len(pu):
+                epmap[f] = pu[i]
+        flags = [f for f in pf if f and epmap.get(f)]
+        if not flags and v.get("vod_play_url"):
+            flags = ["线路1"]
+            epmap = {"线路1": v["vod_play_url"]}
 
-                    play_from = []
-                    play_url = []
-                    vod_id_str = str(vod_id)
+        # 线路排序：易被防盗链拦截的分片源排到末尾，TVBox 默认走稳定线路
+        flags = [f for f in flags if f not in _REORDER] + [f for f in flags if f in _REORDER]
+        urls = [epmap[f] for f in flags]
 
-                    for i, source in enumerate(sources):
-                        display_name = source.get("display_name", source.get("from", ""))
-                        episodes = source.get("episodes", [])
-                        # 懒加载线路: detail_v2 仅返回默认线路的完整集数,
-                        # 其他线路 episodes 为空但 episode_count 有值, 用占位集数保留多线路
-                        if not episodes:
-                            ep_count = int(source.get("episode_count", 0) or 0)
-                            if ep_count > 0:
-                                episodes = [{"title": "第%02d集" % n} for n in range(1, ep_count + 1)]
-                            else:
-                                continue
-                        urls = []
-                        for idx, ep in enumerate(episodes, start=1):
-                            title = ep.get("title", str(idx))
-                            url = ep.get("url", "")
-                            pid_value = f"{vod_id_str}_{idx}_{i}"
-                            urls.append(f"{title}${pid_value}")
-                        if urls:
-                            play_from.append(display_name)
-                            play_url.append("#".join(urls))
+        # 缓存 集ID→影片 与 影片→(线路,首集ID) 回落表
+        lines = []
+        for f, uu in zip(flags, urls):
+            eps = [x.split("$")[-1] for x in (uu.split("#") if uu else []) if x]
+            first = eps[0] if eps else ""
+            for e in eps:
+                self._ep2vid[e] = vid
+            if first:
+                lines.append((f, first))
+        self._lines[vid] = lines
+        if len(self._ep2vid) > 30000:
+            self._ep2vid.clear()
+        if len(self._lines) > 4000:
+            self._lines = {}
 
-                    content = detail.get("vod_content", "")
-                    vod_content = re.sub(r'<[^>]+>', '', content).strip()
-
-                    result["list"] = [{
-                        "vod_id": str(detail.get("vod_id", vod_id)),
-                        "vod_name": detail.get("vod_name", ""),
-                        "vod_pic": detail.get("vod_pic", ""),
-                        "vod_director": detail.get("vod_director", ""),
-                        "vod_actor": detail.get("vod_actor", ""),
-                        "vod_year": str(detail.get("vod_year", "")),
-                        "vod_area": detail.get("vod_area", ""),
-                        "vod_content": vod_content,
-                        "vod_remarks": detail.get("vod_remarks", ""),
-                        "vod_play_from": "$$$".join(play_from),
-                        "vod_play_url": "$$$".join(play_url),
-                    }]
-        except Exception as e:
-            print(f'detailContent error: {e}')
+        content = re.sub(r"<[^>]+>", "", v.get("vod_content") or "").strip()
+        result["list"] = [{
+            "vod_id": vid,
+            "vod_name": str(v.get("vod_name") or vid),
+            "vod_pic": v.get("vod_pic") or "",
+            "vod_year": str(v.get("vod_year") or ""),
+            "vod_area": str(v.get("vod_area") or ""),
+            "vod_director": str(v.get("vod_director") or ""),
+            "vod_actor": str(v.get("vod_actor") or ""),
+            "vod_content": content,
+            "vod_remarks": str(v.get("vod_remarks") or ""),
+            # 只有线路名做全角转义；vod_play_url 的 '#'/$ 原样保留
+            "vod_play_from": "$$$".join(self._clean(x) for x in flags),
+            "vod_play_url": "$$$".join(str(x) for x in urls),
+        }]
         return result
 
     def searchContent(self, key, quick, pg="1"):
         result = {"list": []}
-        try:
-            wd = quote(key)
-            url = f"{self.api}/search/index?wd={wd}&pg={pg}"
-            html = self.fetch_html(url)
-            if html:
-                data = json.loads(html)
-                if data.get("code") == 200 and isinstance(data.get("data"), list):
-                    for v in data["data"]:
-                        result["list"].append({
-                            "vod_id": str(v.get("vod_id", "")),
-                            "vod_name": v.get("vod_name", ""),
-                            "vod_pic": v.get("vod_pic", ""),
-                            "vod_remarks": v.get("vod_remarks", ""),
-                        })
-        except Exception as e:
-            print(f'searchContent error: {e}')
+        kw = str(key or "").strip()
+        if not kw:
+            return result
+        j = self._api("/api.php/app/search/index?wd={}&page={}".format(quote(kw), pg))
+        d = j.get("data")
+        lst = d if isinstance(d, list) else (d.get("videos", []) if isinstance(d, dict) else [])
+        result["list"] = [self._card(v) for v in lst if v.get("vod_id")]
         return result
 
     def playerContent(self, flag, pid, vipFlags):
-        result = {}
-        try:
-            # pid格式: vod_id_ep_index_source_index
-            parts = pid.split("_")
-            vod_id = parts[0]
-            ep_idx = int(parts[1]) if len(parts) > 1 else 1
-            src_idx = int(parts[2]) if len(parts) > 2 else 0
-            src_from = ""
+        result = {"parse": 0, "url": "", "header": {"Referer": self.host + "/", "User-Agent": self.ua}}
+        ep = (pid or "").strip()
+        if not ep or not flag:
+            return result
 
-            # 调用 playback_v2 获取播放信息
-            html = self.fetch_html(f"{self.api}/vod/playback_v2?vod_id={vod_id}")
-            if html:
-                data = json.loads(html)
-                if data.get("code") == 200 and data.get("data"):
-                    sources = data["data"].get("sources", [])
-                    if src_idx < len(sources):
-                        source = sources[src_idx]
-                        src_from = source.get("from", "")
-                        episodes = source.get("episodes", [])
-                        if ep_idx <= len(episodes):
-                            ep = episodes[ep_idx - 1]
-                            play_url = ep.get("url", "")
+        # ① 原线路递增重试，救间歇性失效
+        for i in range(5):
+            ok, u = self._decode(ep, flag)
+            if ok:
+                result["url"] = u
+                return result
+            time.sleep(0.5 + 0.6 * i)
 
-                            if play_url:
-                                if play_url.startswith("http"):
-                                    # 网页URL (如优酷) 或直链
-                                    if re.search(r'\.(m3u8|mp4|flv|ts|mkv|webm|m4s)(\?|$)', play_url, re.I):
-                                        result["parse"] = 0
-                                        result["url"] = play_url
-                                    else:
-                                        result["parse"] = 1
-                                        result["url"] = play_url
-                                else:
-                                    # 加密token: 本地签名后调用 decode/url 取真实地址
-                                    real = self._decode_url(play_url, src_from)
-                                    if real:
-                                        result["parse"] = 0
-                                        result["url"] = real
-                                    else:
-                                        result["parse"] = 1
-                                        result["url"] = self._play_url(vod_id, ep_idx, src_from)
-
-                                result["header"] = {
-                                    "User-Agent": self.ua,
-                                    "Referer": self._ref_host(result.get("url", "")) if result.get("parse") == 0 else self.host,
-                                }
-                                cookie = self._get_cookie()
-                                if cookie:
-                                    result["header"]["Cookie"] = cookie
-                                return result
-
-            # 回退: 用网站播放页 (带线路参数)
-            result["parse"] = 1
-            result["url"] = self._play_url(vod_id, ep_idx, src_from)
-            result["header"] = {"User-Agent": self.ua, "Referer": self._ref_host(result["url"])}
-        except Exception as e:
-            print(f'playerContent error: {e}')
-            result["parse"] = 0
-            result["url"] = ""
+        # ② 持久失效 → 跨线路自动回落：同片其它线路的首集
+        vid = self._ep2vid.get(ep, "")
+        if vid:
+            for o_flag, o_first in self._lines.get(vid, []):
+                if o_flag == flag:
+                    continue
+                ok, u = self._decode(o_first, o_flag)
+                if ok:
+                    result["url"] = u
+                    return result
+                time.sleep(0.3)
         return result
 
+    def isVideoFormat(self, url):
+        text = str(url or "").lower()
+        return any(x in text for x in (".m3u8", ".mp4", ".flv", ".ts", ".mkv", ".webm", ".m4s"))
+
+    def manualVideoCheck(self):
+        return False
+
+    def action(self, action):
+        return None
+
+    def destroy(self):
+        return None
+
     def localProxy(self, params):
-        return self.Mlocal(params)
+        return None
+
+    def proxy(self, params):
+        return self.localProxy(params)

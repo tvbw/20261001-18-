@@ -3660,6 +3660,7 @@ Weeds / Nurse Jackie,
 Pravah Picture HD,
 Romedy Now,
 CBC Drama,
+Z Nation,
 
 电视剧🔁,#genre#
 科幻动作,
@@ -7028,6 +7029,8 @@ TV Arbëria 3 Fëmijë,
 Мульт,
 Тамыр (Уфа),
 ЭлТР Билим Илим,
+FilmRise Anime,
+Nick HD+,
 
 音乐,#genre#
 MTV Live,
@@ -7508,6 +7511,8 @@ Relevant TV,
 JK 24x7 News,
 Onkar Only Truth TV,
 Raj Pariwar,
+M Sign Media,
+Malabar News,
 
 财经,#genre#
 央视财经,

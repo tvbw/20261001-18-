@@ -21,75 +21,6 @@
    "changeable": 1
   },
   {
-   "key": "终端窗口",
-   "name": "终端窗口",
-   "type": 3,
-   "api": "csp_ProxySpider",
-   "searchable": 1,
-   "quickSearch": 1,
-   "filterable": 1,
-   "ext": {
-    "class": "PureTermuxSpider"
-   }
-  },
-  {
-   "key": "csp_Dybj",
-   "name": "动态背景",
-   "type": 3,
-   "api": "csp_ProxySpider",
-   "searchable": 0,
-   "quickSearch": 0,
-   "filterable": 0,
-   "ext": {
-    "class": "Dybj",
-    "ext": "1"
-   }
-  },
-  {
-   "key": "csp_Dybjt",
-   "name": "动态背景t",
-   "type": 3,
-   "api": "csp_ProxySpider",
-   "searchable": 0,
-   "quickSearch": 0,
-   "filterable": 0,
-   "ext": {
-    "class": "Dybjt",
-    "title_scale": 1.0,
-    "font_scale": 1.0,
-    "tmdb_key": "d7040155454e7fdf547c4d889ebbcca7"
-   }
-  },
-  {
-   "key": "运行",
-   "name": "运行模块",
-   "type": 3,
-   "api": "csp_ProxySpider",
-   "searchable": 1,
-   "quickSearch": 1,
-   "filterable": 1,
-   "ext": {
-    "class": "PureTermuxSpider",
-    "json": "./lib/xl.json"
-   }
-  },
-  {
-   "key": "UI模块",
-   "name": "管理模块",
-   "type": 3,
-   "api": "csp_ProxySpider",
-   "searchable": 1,
-   "quickSearch": 1,
-   "filterable": 1,
-   "ext": {
-    "class": "Ui",
-    "ext": {
-     "tmdb_key": "填写自己的key",
-     "theme": "emerald"
-    }
-   }
-  },
-  {
    "key": "油管so",
    "name": "油管 | SO",
    "type": 3,
@@ -216,13 +147,6 @@
     "class": "Yt"
    },
    "filterable": 1
-  },
-  {
-   "key": "本地服务管理",
-   "name": "服务管理",
-   "type": 3,
-   "api": "csp_ProxySpider",
-   "ext": "ServerManager"
   },
   {
    "key": "HuyaLive",
@@ -377,6 +301,93 @@
    },
    "ext": {
     "class": "NovelBd"
+   }
+  },
+  {
+   "key": "本地服务管理",
+   "name": "服务管理",
+   "type": 3,
+   "api": "csp_ProxySpider",
+   "ext": "ServerManager"
+  },
+  {
+   "key": "终端窗口",
+   "name": "终端窗口",
+   "type": 3,
+   "api": "csp_ProxySpider",
+   "searchable": 1,
+   "quickSearch": 1,
+   "filterable": 1,
+   "ext": {
+    "class": "PureTermuxSpider"
+   }
+  },
+  {
+   "key": "csp_Dybj",
+   "name": "动态背景",
+   "type": 3,
+   "api": "csp_ProxySpider",
+   "searchable": 0,
+   "quickSearch": 0,
+   "filterable": 0,
+   "ext": {
+    "class": "Dybj",
+    "ext": "1"
+   }
+  },
+  {
+   "key": "csp_Dybjt",
+   "name": "动态背景t",
+   "type": 3,
+   "api": "csp_ProxySpider",
+   "searchable": 0,
+   "quickSearch": 0,
+   "filterable": 0,
+   "ext": {
+    "class": "Dybjt",
+    "title_scale": 1.0,
+    "font_scale": 1.0,
+    "tmdb_key": "d7040155454e7fdf547c4d889ebbcca7"
+   }
+  },
+  {
+   "key": "运行",
+   "name": "运行模块",
+   "type": 3,
+   "api": "csp_ProxySpider",
+   "searchable": 1,
+   "quickSearch": 1,
+   "filterable": 1,
+   "ext": {
+    "class": "PureTermuxSpider",
+    "json": "./lib/xl.json"
+   }
+  },
+  {
+   "key": "UI模块",
+   "name": "管理模块",
+   "type": 3,
+   "api": "csp_ProxySpider",
+   "searchable": 1,
+   "quickSearch": 1,
+   "filterable": 1,
+   "ext": {
+    "class": "Ui",
+    "ext": {
+     "tmdb_key": "d7040155454e7fdf547c4d889ebbcca7",
+     "theme": "emerald"
+    }
+   }
+  },
+  {
+   "key": "exp_ui",
+   "name": "实验替代UI源",
+   "type": 3,
+   "api": "csp_ProxySpider",
+   "searchable": 0,
+   "changeable": 0,
+   "ext": {
+    "class": "ExperimentUiSpider"
    }
   }
  ],

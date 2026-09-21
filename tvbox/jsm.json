@@ -516,7 +516,7 @@
 				"type": 0,
 				"url": "http://127.0.0.1:10079/c/3600/null/http://127.0.0.1:35456/all.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png",
 				"catchup": {
 					"type": "append",
@@ -528,7 +528,7 @@
 				"type": 0,
 				"url": "http://127.0.0.1:10079/c/3600/null/http://127.0.0.1:35456/tv.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png",
 				"catchup": {
 					"type": "append",
@@ -540,7 +540,7 @@
 				"type": 0,
 				"url": "http://127.0.0.1:10079/c/3600/null/http://127.0.0.1:35456/ysptx.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png"
 			},
 			{
@@ -548,7 +548,7 @@
 				"type": 0,
 				"url": "http://127.0.0.1:10079/c/3600/null/http://127.0.0.1:35456/ysptp.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png"
 			},
 			{
@@ -556,7 +556,7 @@
 				"type": 0,
 				"url": "http://127.0.0.1:10079/c/3600/null/http://127.0.0.1:35456/migu.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png",
 				"catchup": {
 					"type": "append",
@@ -568,7 +568,7 @@
 				"type": 0,
 				"url": "http://127.0.0.1:35456/miguevent.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png",
 				"catchup": {
 					"type": "append",
@@ -580,7 +580,7 @@
 				"type": 0,
 				"url": "http://127.0.0.1:10079/c/3600/null/http://127.0.0.1:35456/tv.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date=DATE1SUB",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date=DATE1SUB",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png",
 				"catchup": {
 					"type": "append",
@@ -592,7 +592,7 @@
 				"type": 0,
 				"url": "http://127.0.0.1:10079/c/3600/null/http://127.0.0.1:35456/wxty.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png"
 			},
 			{
@@ -600,7 +600,7 @@
 				"type": 0,
 				"url": "http://sub.ottiptv.cc/iptv.m3u",
 				"ua": "okHttp/Mod-1.3.0.0",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date=DATE1SUB",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date=DATE1SUB",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png",
 				"catchup": {
 					"type": "append",
@@ -612,7 +612,7 @@
 				"type": 0,
 				"url": "http://127.0.0.1:10079/c/3600/null/http://127.0.0.1:35456/bjyd.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png",
 				"catchup": {
 					"type": "append",
@@ -624,7 +624,7 @@
 				"type": 0,
 				"url": "http://127.0.0.1:10079/c/3600/null/http://127.0.0.1:35456/bjyd.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date=DATE1SUB",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date=DATE1SUB",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png",
 				"catchup": {
 					"type": "append",
@@ -636,7 +636,7 @@
 				"type": 0,
 				"url": "http://127.0.0.1:10079/c/3600/null/http://127.0.0.1:35456/bjyd.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date=DATE2SUB",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date=DATE2SUB",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png",
 				"catchup": {
 					"type": "append",
@@ -648,7 +648,7 @@
 				"type": 0,
 				"url": "http://127.0.0.1:10079/c/3600/null/http://127.0.0.1:35456/bjyd.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date=DATE3SUB",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date=DATE3SUB",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png",
 				"catchup": {
 					"type": "append",
@@ -660,7 +660,7 @@
 				"type": 0,
 				"url": "./lib/biptv.txt",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png"
 			},
 			{
@@ -668,7 +668,7 @@
 				"type": 0,
 				"url": "http://127.0.0.1:10079/dlnam3u/tv.m3u",
 				"ua": "okhttp/3.15.",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png"
 			},
 			{
@@ -677,7 +677,7 @@
 				"url": "http://127.0.0.1:10079/c/3600/proxy/https://raw.githubusercontent.com/fanmingming/live/refs/heads/main/tv/m3u/ipv6.m3u",
 				
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png"
 			},
 			{
@@ -685,7 +685,7 @@
 				"type": 0,
 				"url": "http://127.0.0.1:10079/m3u/3600/proxy/https://raw.githubusercontent.com/fanmingming/live/refs/heads/main/tv/m3u/ipv6.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png"
 			},
 			{
@@ -694,7 +694,7 @@
 				"url": "http://127.0.0.1:10079/c/3600/proxy/https://fanmingming.com/txt?url=https://live.fanmingming.cn/tv/m3u/ipv6.m3u",
 				
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png"
 			},
 			{
@@ -702,7 +702,7 @@
 				"type": 0,
 				"url": "http://127.0.0.1:10079/c/1800/null/http://192.168.101.2:35455/tv.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png"
 			},
 			{
@@ -710,7 +710,7 @@
 				"type": 0,
 				"url": "http://127.0.0.1:35456/miguevent.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png"
 			},
 			{
@@ -718,7 +718,7 @@
 				"type": 0,
 				"url": "http://127.0.0.1:10079/c/60/null/http://127.0.0.1:35456/txevent.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png"
 			},
 			{
@@ -726,7 +726,7 @@
 				"type": 0,
 				"url": "http://127.0.0.1:10079/c/60/null/http://127.0.0.1:35456/iqyevent.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png"
 			},
 			{
@@ -734,7 +734,7 @@
 				"type": 0,
 				"url": "http://127.0.0.1:10079/c/3600/null/http://127.0.0.1:35456/bililive.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png"
 			},
 			{
@@ -742,7 +742,7 @@
 				"type": 0,
 				"url": "http://127.0.0.1:10079/mp4/3600/null/http://127.0.0.1:35456/bililive.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png"
 			},
 			{
@@ -750,7 +750,7 @@
 				"type": 0,
 				"url": "http://127.0.0.1:10079/c/3600/null/http://127.0.0.1:35456/huyayqk.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png"
 			},
 			{
@@ -758,7 +758,7 @@
 				"type": 0,
 				"url": "http://127.0.0.1:10079/mp4/3600/null/http://127.0.0.1:35456/huyayqk.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png"
 			},
 			{
@@ -766,7 +766,7 @@
 				"type": 0,
 				"url": "http://127.0.0.1:10079/c/3600/null/http://127.0.0.1:35456/douyuyqk.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png"
 			},
 			{
@@ -774,7 +774,7 @@
 				"type": 0,
 				"url": "http://127.0.0.1:10079/mp4/3600/null/http://127.0.0.1:35456/douyuyqk.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png"
 			},
 			{
@@ -782,7 +782,7 @@
 				"type": 0,
 				"url": "http://127.0.0.1:10079/c/3600/null/http://127.0.0.1:35456/yylunbo.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png"
 			},
 			{
@@ -790,7 +790,7 @@
 				"type": 0,
 				"url": "./lib/ytblive.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png"
 			},
 			{
@@ -798,7 +798,7 @@
 				"type": 0,
 				"url": "http://aktv.top/live.m3u",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png"
 			},
 			{
@@ -806,7 +806,7 @@
 				"type": 0,
 				"url": "https://tv.iill.top/m3u/Gather",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png"
 			},
 			{
@@ -814,7 +814,7 @@
 				"type": 0,
 				"url": "https://tv.iill.top/m3u/Live",
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png"
 			},
 			{
@@ -823,7 +823,7 @@
 				"url": "http://127.0.0.1:10079/c/3600/proxy/https://fanmingming.com/txt?url=https://live.fanmingming.cn/tv/m3u/ipv6.m3u",
 				
 				"ua": "okhttp/3.15",
-				"epg": "http://127.0.0.1:10079/p/0/proxy/http://epg.112114.xyz/?ch={name}&date={date}",
+				"epg": "http://127.0.0.1:10079/p/0/proxy/https://epg.cdn.loc.cc?ch={name}&date={date}",
 				"logo": "http://127.0.0.1:10079/p/0/proxy/https://cdn.jsdmirror.com/gh/fanmingming/live@master/tv/{name}.png"
 			},
 			{
