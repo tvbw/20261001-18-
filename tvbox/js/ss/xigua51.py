@@ -173,11 +173,23 @@ class Spider(Spider):
     def getName(self):
         return '51吸瓜'
 
+    def getDependence(self):
+        return []
+
+    def action(self, action):
+        return {}
+
+    def proxy(self, param):
+        return self.localProxy(param)
+
     def isVideoFormat(self, url):
-        pass
+        if not url:
+            return False
+        u = str(url).lower()
+        return '.m3u8' in u or '.mp4' in u or '.flv' in u or '.ts' in u
 
     def manualVideoCheck(self):
-        pass
+        return False
 
     def destroy(self):
         pass
@@ -232,7 +244,11 @@ class Spider(Spider):
         return result
 
     def homeVideoContent(self):
-        pass
+        try:
+            data = self.getdoc('/')
+            return {'list': self.getlist(data('#index article a'))[:30]}
+        except Exception:
+            return {'list': []}
 
     def categoryContent(self, tid, pg, filter, extend):
         if '@folder' in tid:

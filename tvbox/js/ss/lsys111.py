@@ -1,26 +1,22 @@
 # -*- coding: utf-8 -*-
 import re
-import sys
+import json
 from base64 import b64decode
 from urllib.parse import quote
+
+import requests
 from lxml import etree
 
-try:
-    import urllib3
-    urllib3.disable_warnings()
-except Exception:
-    pass
 
-sys.path.append('..')
-from base.spider import Spider
-
-
-class Spider(Spider):
+class Spider:
     def getName(self):
         return "恋丝影视"
 
     def init(self, extend=""):
-        self.host = "https://www.lsys111.top"
+        if isinstance(extend, str) and extend.strip().startswith("http"):
+            self.host = extend.strip().rstrip("/")
+        else:
+            self.host = "https://www.lsys111.top"
         self.home = self.host + "/video"
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
@@ -61,10 +57,20 @@ class Spider(Spider):
             {"type_id": "侵犯", "type_name": "侵犯"},
         ]
 
+    def getDependence(self):
+        return []
+
+    def action(self, action):
+        return {}
+
     def _get(self, url):
         try:
-            r = self.fetch(url, headers=self.headers, timeout=15, verify=False)
-            return r.text
+            s = requests.Session()
+            r = s.get(url, headers=self.headers, timeout=30, verify=False)
+            r.encoding = "utf-8"
+            if r.status_code == 200:
+                return r.text
+            return ""
         except Exception:
             return ""
 
@@ -169,7 +175,7 @@ class Spider(Spider):
         return {"page": pg, "pagecount": pagecount, "limit": 16, "total": pagecount * 16, "list": items}
 
     def detailContent(self, ids):
-        vid = str(ids[0])
+        vid = str(ids[0]) if isinstance(ids, (list, tuple)) else str(ids)
         result = {"list": []}
         html = self._get(f"{self.host}/video/player/{vid}")
         if not html:
@@ -225,7 +231,14 @@ class Spider(Spider):
         return False
 
     def localProxy(self, param):
-        return None
+        if isinstance(param, str):
+            try:
+                param = json.loads(param)
+            except Exception:
+                param = {}
+        if not isinstance(param, dict):
+            param = {}
+        return [404, "text/plain", b"Not Found", {}]
 
     def destroy(self):
         return None

@@ -59,7 +59,7 @@ class Spider(BaseSpider):
         self.session_id = uuid.uuid4().hex
         self.device_id = self.session_id
         self.token = ""
-        self.headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36", "Accept": "*/*", "Origin": self.host, "Referer": self.host + "/home", "Content-Type": "application/octet-stream"}
+        self.headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36", "Accept": "*/*", "Origin": self.host, "Referer": self.host + "/", "Content-Type": "application/octet-stream"}
         self.session = requests.Session()
         self.session.headers.update(self.headers)
         self.class_cache = None
@@ -73,7 +73,7 @@ class Spider(BaseSpider):
                 self.api = self.host + "/api"
                 self.token = cfg.get("token", self.token)
                 self.headers["Origin"] = self.host
-                self.headers["Referer"] = self.host + "/home"
+                self.headers["Referer"] = self.host + "/"
                 self.session.headers.update(self.headers)
             except Exception:
                 None
@@ -141,7 +141,35 @@ class Spider(BaseSpider):
         obj = self._api("/drama/play", {"id": vid, "seq": str(seq)}, True)
         data = obj.get("data", {}) if isinstance(obj, dict) else {}
         url = data.get("m3u8") or data.get("url") or self._hls(vid, seq)
-        return {"parse": 0, "playUrl": "", "url": url, "jx": 0, "header": {"User-Agent": self.headers["User-Agent"], "Referer": self.host + "/home", "Origin": self.host}}
+        return {"parse": 0, "playUrl": "", "url": url, "jx": 0, "header": {"User-Agent": self.headers["User-Agent"], "Referer": self.host + "/", "Origin": self.host}}
+
+    def homeVideoContent(self):
+        return {"list": []}
+
+    def localProxy(self, param):
+        return None
+
+    def proxy(self, param):
+        return self.localProxy(param)
+
+    def isVideoFormat(self, url):
+        u = str(url or "").lower()
+        return ("m3u8" in u) or (".mp4" in u) or (".ts" in u)
+
+    def manualVideoCheck(self):
+        return False
+
+    def action(self, action):
+        return ""
+
+    def destroy(self):
+        try:
+            self.session.close()
+        except Exception:
+            None
+
+    def getDependence(self):
+        return []
 
     def _api(self, path, data=None, silent=False):
         path = "/" + path.lstrip("/")

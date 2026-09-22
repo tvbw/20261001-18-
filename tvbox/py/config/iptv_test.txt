@@ -6895,6 +6895,7 @@ Alkass One,
 Alkass SHOOF,
 Alkass Six,
 Alkass Two,
+Star Sports 1,
 
 少儿,#genre#
 央视少儿,
@@ -7185,6 +7186,7 @@ Zhara,
 Сити Эдем Классическая Музыка,
 Сити Эдем Сиртаки ТВ,
 УТРК Музыка,
+Tunes 6,
 
 新闻,#genre#
 TVBS新闻,
@@ -7513,6 +7515,7 @@ Onkar Only Truth TV,
 Raj Pariwar,
 M Sign Media,
 Malabar News,
+Zee Malayalam News,
 
 财经,#genre#
 央视财经,
@@ -7836,6 +7839,8 @@ RTHK TV 32 (港台電視32),
 RTHK TV 33 (港台電視33),
 RTHK TV 34 (港台電視34),
 VOA美国之音,
+Zee Alwan,
+Zee Yuva,
 
 福建,#genre#
 漳州新闻综合,

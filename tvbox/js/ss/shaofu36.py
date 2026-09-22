@@ -1,39 +1,15 @@
 # -*- coding: utf-8 -*-
-import sys
 import re
 import json
 import base64
 import html as htmlmod
 from urllib.parse import quote, unquote, urljoin
 
-try:
-    import requests
-except ImportError:
-    requests = None
+import requests
+from lxml import etree
 
-try:
-    from lxml import etree
-except ImportError:
-    etree = None
 
-try:
-    from base.spider import Spider as BaseSpider
-except ImportError:
-    class BaseSpider:
-        def init(self, extend=""): pass
-        def homeContent(self, filter): return {}
-        def homeVideoContent(self): return {}
-        def categoryContent(self, tid, pg, filter, extend): return {}
-        def detailContent(self, ids): return {}
-        def playerContent(self, flag, id, vipFlags): return {}
-        def searchContent(self, key, quick, pg="1"): return {}
-        def isVideoFormat(self, url): return False
-        def manualVideoCheck(self): return False
-        def localProxy(self, param): return [200, "text/plain", b""]
-        def destroy(self): pass
-        def getName(self): return "Base"
-
-class Spider(BaseSpider):
+class Spider:
     def __init__(self):
         self.host = "https://sjsfcd6h.shaofu36.xyz"
         self.headers = {
@@ -55,6 +31,12 @@ class Spider(BaseSpider):
             if self.session:
                 self.session.headers.update(self.headers)
 
+    def getDependence(self):
+        return []
+
+    def action(self, action):
+        return {}
+
     def getName(self):
         return "shaofu36"
 
@@ -69,13 +51,20 @@ class Spider(BaseSpider):
         return False
 
     def localProxy(self, param):
+        if isinstance(param, str):
+            try:
+                param = json.loads(param)
+            except Exception:
+                param = {}
+        if not isinstance(param, dict):
+            param = {}
         return [200, "video/MP2T", b"", {}]
 
-    def _req(self, url):
+    def _req(self, url, timeout=30):
         if not self.session:
             return ""
         try:
-            r = self.session.get(url, headers=self.headers, timeout=15, verify=False)
+            r = self.session.get(url, headers=self.headers, timeout=timeout, verify=False)
             r.encoding = "utf-8"
             return r.text
         except Exception:
@@ -172,22 +161,21 @@ class Spider(BaseSpider):
         return ""
 
     def _extract_playlist(self, html_text):
-        """提取播放列表，返回 [(source_name, [episodes...]), ...]"""
+        """提取播放列表，返回 (sources, play_urls)，已去重"""
         sources = []
         play_urls = []
+        seen_hrefs = set()
 
-        # 使用lxml解析DOM结构
         if etree:
             doc = etree.HTML(html_text)
             if doc is not None:
-                # 查找所有播放面板
-                panels = doc.xpath('//div[contains(@class,"play") or contains(@class,"playlist") or contains(@class,"source") or contains(@class,"panel")]')
+                panels = doc.xpath('//div[contains(@class,"playlist") or contains(@class,"tab-content") or contains(@class,"play-list") or contains(@class,"vod-play")]')
+                if not panels:
+                    panels = doc.xpath('//div[contains(@class,"player-wrap")]')
                 for panel in panels:
                     try:
-                        # 源名称
                         sname_list = panel.xpath('.//h3/text() | .//span[contains(@class,"name") or contains(@class,"title") or contains(@class,"tab")]/text() | .//div[contains(@class,"from")]/text()')
                         sname = self._clean(sname_list[0]) if sname_list else "默认线路"
-                        # 剧集
                         eps = panel.xpath('.//a[contains(@href,"/vodplay/") or contains(@href,"/play/")]')
                         if not eps:
                             eps = panel.xpath('.//a[contains(@href,"vodplay")]')
@@ -198,23 +186,25 @@ class Spider(BaseSpider):
                                 ep_title = self._clean(ep_title_list[0]) if ep_title_list else "播放"
                                 ep_href_list = ep.xpath('./@href')
                                 ep_href = ep_href_list[0] if ep_href_list else ""
-                                if ep_href:
+                                if ep_href and ep_href not in seen_hrefs:
+                                    seen_hrefs.add(ep_href)
                                     ep_list.append(ep_title + "$" + self._fix(ep_href))
                             except Exception:
                                 continue
-                        if ep_list:
+                        if ep_list and sname not in sources:
                             sources.append(sname)
                             play_urls.append("#".join(ep_list))
                     except Exception:
                         continue
 
-        # 如果lxml没提取到，用正则兜底
         if not sources:
-            # 查找所有包含vodplay的链接
             eps = re.findall(r'<a[^>]+href=["\'](/vodplay/[^"\']+)["\'][^>]*>(.*?)</a>', html_text, re.S | re.I)
             if eps:
                 ep_list = []
                 for href, title in eps:
+                    if href in seen_hrefs:
+                        continue
+                    seen_hrefs.add(href)
                     title = self._clean(title)
                     if not title:
                         title = "播放"
@@ -226,23 +216,26 @@ class Spider(BaseSpider):
         return sources, play_urls
 
     def _play(self, html_text):
-        """从播放页HTML提取真实视频链接"""
-        # 1. player_data
-        m = re.search(r'var\s+player_data\s*=\s*(\{.*?\});', html_text, re.DOTALL)
-        if not m:
-            m = re.search(r'player_data\s*=\s*(\{.*?\});', html_text, re.DOTALL)
-        if m:
-            try:
-                data = json.loads(m.group(1))
-                url = data.get("url", "")
-                encrypt = data.get("encrypt", "0")
-                if encrypt == "1" or encrypt == 1:
-                    url = unquote(url)
-                elif encrypt == "2" or encrypt == 2:
-                    url = unquote(base64.b64decode(url).decode("utf-8"))
-                return url
-            except Exception:
-                pass
+        if not html_text:
+            return ""
+        for pat in [
+            r"var\s+(?:player_aaaa|player_data|player|mac_player)\s*=\s*(\{.*?\})\s*(?:;|\s*</script>)",
+            r"(?:player_aaaa|player_data|player)\s*=\s*(\{.*?\})\s*(?:;|\s*</script>)",
+        ]:
+            m = re.search(pat, html_text, re.S)
+            if m:
+                try:
+                    data = json.loads(m.group(1))
+                    url = data.get("url", "")
+                    encrypt = data.get("encrypt", "0")
+                    if encrypt == "1" or encrypt == 1:
+                        url = unquote(url)
+                    elif encrypt == "2" or encrypt == 2:
+                        url = unquote(base64.b64decode(url).decode("utf-8"))
+                    if url:
+                        return url
+                except Exception:
+                    pass
         # 2. 直接匹配
         m = re.search(r'(https?://[^\s"\']+\.m3u8[^\s"\']*)', html_text)
         if m:
@@ -282,12 +275,12 @@ class Spider(BaseSpider):
             {"type_name": "国产传媒", "type_id": "21"},
             {"type_name": "日本无码", "type_id": "23"},
             {"type_name": "欧美无码", "type_id": "24"},
+            {"type_name": "明星换脸", "type_id": "25"},
+            {"type_name": "抖阴视频", "type_id": "26"},
             {"type_name": "强奸乱伦", "type_id": "69"},
             {"type_name": "制服诱惑", "type_id": "70"},
             {"type_name": "国产主播", "type_id": "71"},
             {"type_name": "激情动漫", "type_id": "72"},
-            {"type_name": "明星换脸", "type_id": "25"},
-            {"type_name": "抖阴视频", "type_id": "26"},
             {"type_name": "女优明星", "type_id": "88"},
             {"type_name": "网曝黑料", "type_id": "56"},
             {"type_name": "伦理三级", "type_id": "73"},
@@ -302,7 +295,7 @@ class Spider(BaseSpider):
         return {"class": classes, "filters": {}}
 
     def homeVideoContent(self):
-        return self.categoryContent("63", "1", False, {})
+        return self.categoryContent("20", "1", False, {})
 
     def categoryContent(self, tid, pg, filter, extend):
         result = {"list": [], "page": int(pg), "pagecount": 1, "limit": 24, "total": 0}
@@ -409,12 +402,16 @@ class Spider(BaseSpider):
         })
         return result
 
-    def playerContent(self, flag, id, vipFlags):
-        result = {"parse": 0, "playUrl": "", "url": "", "header": ""}
+    def playerContent(self, flag, id, vipFlags=None):
+        if isinstance(id, (list, tuple)):
+            id = str(id[0]) if id else ""
+        else:
+            id = str(id or "")
+        result = {"parse": 0, "jx": 0, "playUrl": "", "url": "", "header": {}}
 
         if self.isVideoFormat(id):
             result["url"] = id
-            result["header"] = json.dumps({"Referer": self.host + "/", "User-Agent": self.headers["User-Agent"]})
+            result["header"] = {"Referer": self.host + "/", "User-Agent": self.headers["User-Agent"]}
             return result
 
         if "/vodplay/" in id or "/play/" in id:
@@ -423,11 +420,11 @@ class Spider(BaseSpider):
                 purl = self._play(html_text)
                 if purl:
                     result["url"] = purl
-                    result["header"] = json.dumps({"Referer": self.host + "/", "User-Agent": self.headers["User-Agent"]})
+                    result["header"] = {"Referer": self.host + "/", "User-Agent": self.headers["User-Agent"]}
                     return result
             result["parse"] = 1
             result["url"] = id
-            result["header"] = json.dumps({"Referer": self.host + "/", "User-Agent": self.headers["User-Agent"]})
+            result["header"] = {"Referer": self.host + "/", "User-Agent": self.headers["User-Agent"]}
             return result
 
         if id.startswith("http"):
@@ -436,7 +433,7 @@ class Spider(BaseSpider):
                 purl = self._play(html_text)
                 if purl:
                     result["url"] = purl
-                    result["header"] = json.dumps({"Referer": self.host + "/", "User-Agent": self.headers["User-Agent"]})
+                    result["header"] = {"Referer": self.host + "/", "User-Agent": self.headers["User-Agent"]}
                     return result
 
         result["url"] = id
