@@ -3661,6 +3661,7 @@ Pravah Picture HD,
 Romedy Now,
 CBC Drama,
 Z Nation,
+Pluto TV 80's Action,
 
 电视剧🔁,#genre#
 科幻动作,
@@ -6517,6 +6518,7 @@ NBTV4|NBTV-4,
 浙江华数,
 浙江在线,
 浙江好易购,
+萧山新闻综合,
 
 广东,#genre#
 广东综艺,
