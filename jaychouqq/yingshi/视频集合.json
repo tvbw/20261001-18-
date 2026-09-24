@@ -134,247 +134,6 @@
     }
   },
   {
-    "name": "📺91短剧",
-    "api": "https://91crdj.com",
-    "type": 2,
-    "searchable": true,
-    "header": {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-      "Referer": "https://91crdj.com/",
-      "Accept-Language": "zh-CN,zh;q=0.9"
-    },
-    "categories": [
-      {
-        "name": "成人短剧",
-        "url": "/duanju/page/{{page}}/",
-        "url2": "/duanju/"
-      },
-      {
-        "name": "成人漫剧",
-        "url": "/manju/page/{{page}}/",
-        "url2": "/manju/"
-      },
-      {
-        "name": "真人剧",
-        "url": "/zhenrenju/page/{{page}}/",
-        "url2": "/zhenrenju/"
-      },
-      {
-        "name": "91成人短剧",
-        "url": "/biaoqian/91chengrenduanju/page/{{page}}/",
-        "url2": "/biaoqian/91chengrenduanju/"
-      },
-      {
-        "name": "AI短剧",
-        "url": "/biaoqian/aiduanju/page/{{page}}/",
-        "url2": "/biaoqian/aiduanju/"
-      },
-      {
-        "name": "武打短剧",
-        "url": "/biaoqian/wudaduanju/page/{{page}}/",
-        "url2": "/biaoqian/wudaduanju/"
-      },
-      {
-        "name": "玄幻短剧",
-        "url": "/biaoqian/xuanhuanduanju/page/{{page}}/",
-        "url2": "/biaoqian/xuanhuanduanju/"
-      }
-    ],
-    "list": {
-      "list": "a.card",
-      "name": "img@alt||@data-track-item-name",
-      "tips": "",
-      "coverUrl": "img@data-src||img@src",
-      "detailUrl": "href"
-    },
-    "search": {
-      "url": "/?s={{key}}",
-      "list": "a.card",
-      "name": "img@alt||@data-track-item-name",
-      "coverUrl": "img@data-src||img@src",
-      "detailUrl": "href"
-    },
-    "detail": {
-      "meta": "title@text||h1@text"
-    },
-    "play": {
-      "list": "a[href*='/1/'], a.card",
-      "name": "text",
-      "url": "href"
-    }
-  },
-  {
-    "name": "📺57短剧",
-    "api": "https://57duanju.org",
-    "type": 2,
-    "searchable": true,
-    "removeReferer": false,
-    "header": {
-      "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
-      "Referer": "https://57duanju.org/",
-      "Accept-Language": "zh-CN,zh;q=0.9"
-    },
-    "categories": [
-      {
-        "name": "成人AI短剧",
-        "url": "/aichengduanju/{{page}}/",
-        "url2": "/aichengduanju/"
-      },
-      {
-        "name": "热门短剧",
-        "url": "/hot-dramas/{{page}}/",
-        "url2": "/hot-dramas/"
-      },
-      {
-        "name": "连载中",
-        "url": "/ongoing/{{page}}/",
-        "url2": "/ongoing/"
-      },
-      {
-        "name": "人气",
-        "url": "/popular/{{page}}/",
-        "url2": "/popular/"
-      },
-      {
-        "name": "排行",
-        "url": "/top/{{page}}/",
-        "url2": "/top/"
-      }
-    ],
-    "list": {
-      "list": "a[href*='/events/']",
-      "name": "img@alt||@title||text",
-      "tips": "",
-      "coverUrl": "img@src||img@data-src",
-      "detailUrl": "href"
-    },
-    "search": {
-      "url": "/search/?q={{key}}",
-      "list": "a[href*='/events/']",
-      "name": "img@alt||@title||text",
-      "coverUrl": "img@src||img@data-src",
-      "detailUrl": "href"
-    },
-    "detail": {
-      "meta": "title@text||h1@text"
-    },
-    "play": {
-      "list": "video",
-      "name": "播放",
-      "url": "data-hls-src||data-fallback-src||src||data-hls"
-    },
-    "toc": {
-      "list": "video",
-      "name": "播放",
-      "url": "data-hls-src||data-fallback-src||src||data-hls"
-    }
-  },
-
-  {
-    "name": "📺网飞猫",
-    "api": "https://www.fjszjm.com",
-    "type": 2,
-    "searchable": true,
-    "removeReferer": false,
-    "header": {
-      "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
-      "Referer": "https://www.fjszjm.com/",
-      "Accept-Language": "zh-CN,zh;q=0.9",
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-    },
-    "categories": [
-      {
-        "name": "电影",
-        "url": "/wfmwutp/1-{{page}}.html",
-        "url2": "/wfmwutp/1.html"
-      },
-      {
-        "name": "电视剧",
-        "url": "/wfmwutp/2-{{page}}.html",
-        "url2": "/wfmwutp/2.html"
-      },
-      {
-        "name": "综艺",
-        "url": "/wfmwutp/3-{{page}}.html",
-        "url2": "/wfmwutp/3.html"
-      },
-      {
-        "name": "动漫",
-        "url": "/wfmwutp/4-{{page}}.html",
-        "url2": "/wfmwutp/4.html"
-      },
-      {
-        "name": "短剧",
-        "url": "/wfmwutp/5-{{page}}.html",
-        "url2": "/wfmwutp/5.html"
-      },
-      {
-        "name": "动作片",
-        "url": "/wfmwutp/6-{{page}}.html",
-        "url2": "/wfmwutp/6.html"
-      },
-      {
-        "name": "喜剧片",
-        "url": "/wfmwutp/7-{{page}}.html",
-        "url2": "/wfmwutp/7.html"
-      },
-      {
-        "name": "国产剧",
-        "url": "/wfmwutp/17-{{page}}.html",
-        "url2": "/wfmwutp/17.html"
-      },
-      {
-        "name": "港台剧",
-        "url": "/wfmwutp/18-{{page}}.html",
-        "url2": "/wfmwutp/18.html"
-      },
-      {
-        "name": "日韩剧",
-        "url": "/wfmwutp/20-{{page}}.html",
-        "url2": "/wfmwutp/20.html"
-      },
-      {
-        "name": "欧美剧",
-        "url": "/wfmwutp/21-{{page}}.html",
-        "url2": "/wfmwutp/21.html"
-      },
-      {
-        "name": "国产动漫",
-        "url": "/wfmwutp/27-{{page}}.html",
-        "url2": "/wfmwutp/27.html"
-      }
-    ],
-    "list": {
-      "list": "a.stui-vodlist__thumb",
-      "name": "title||alt",
-      "tips": ".pic-text@text||.pic-text1@text",
-      "coverUrl": "data-original||data-src||src",
-      "detailUrl": "href"
-    },
-    "search": {
-      "url": "/wfmwusc/{{key}}-------------.html",
-      "list": "a.stui-vodlist__thumb",
-      "name": "title||alt",
-      "tips": ".pic-text@text",
-      "coverUrl": "data-original||src",
-      "detailUrl": "href"
-    },
-    "detail": {
-      "meta": "h1@text||.stui-content__detail@html"
-    },
-    "play": {
-      "list": ".stui-content__playlist a[href*='wfmwupy']",
-      "name": "text",
-      "url": "href"
-    },
-    "toc": {
-      "list": ".stui-content__playlist a[href*='wfmwupy']",
-      "name": "text",
-      "url": "href"
-    }
-  },
-
-  {
     "name": "奇优",
     "type": 2,
     "api": "http://www.wdbay.com",
@@ -660,6 +419,74 @@
       "list": "body@js:function getPlayList(html) { var vodId = substring(html,'\\\"vodId\\\":',8,','); var script = substring(html,'episodeList',13,']',1); script = script.replaceAll('null',vodId); return script; }; getPlayList(__result)",
       "name": "name",
       "url": "/vod/play/{{$.playUrl}}/1/{{$.nid}}"
+    }
+  },
+  {
+    "name": "📺麻豆4K",
+    "api": "https://madou8.pw",
+    "type": 2,
+    "searchable": true,
+    "header": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+      "Referer": "https://madou8.pw/asian/zh-CN/",
+      "Accept-Language": "zh-CN,zh;q=0.9"
+    },
+    "categories": [
+      {
+        "name": "最新上架",
+        "url": "/asian/zh-CN/videos/new-releases/page/{{page}}"
+      },
+      {
+        "name": "最近更新",
+        "url": "/asian/zh-CN/videos/recent/page/{{page}}"
+      },
+      {
+        "name": "今日热门",
+        "url": "/asian/zh-CN/videos/hot/today/page/{{page}}"
+      },
+      {
+        "name": "本周热门",
+        "url": "/asian/zh-CN/videos/hot/week/page/{{page}}"
+      },
+      {
+        "name": "本月热门",
+        "url": "/asian/zh-CN/videos/hot/month/page/{{page}}"
+      },
+      {
+        "name": "中文字幕",
+        "url": "/asian/zh-CN/videos/tag/%E4%B8%AD%E6%96%87%E5%AD%97%E5%B9%95/page/{{page}}"
+      },
+      {
+        "name": "无码流出",
+        "url": "/asian/zh-CN/videos/tag/%E6%97%A0%E7%A0%81%E6%B5%81%E5%87%BA/page/{{page}}"
+      }
+    ],
+    "list": {
+      "list": "a.streamit-video-card__media-link",
+      "name": "img@alt",
+      "tips": "",
+      "coverUrl": "img@src",
+      "detailUrl": "href"
+    },
+    "search": {
+      "url": "/asian/zh-CN/videos/search/{{key}}",
+      "list": "a.streamit-video-card__media-link",
+      "name": "img@alt",
+      "coverUrl": "img@src",
+      "detailUrl": "href"
+    },
+    "detail": {
+      "meta": "h1@text||title@text"
+    },
+    "play": {
+      "list": "body@js:function getPlay(html){try{var m=html.match(/videoUid\\\"?\\s*[:=]\\s*[\\\"']([0-9a-fA-F]{10,})[\\\"']/);if(!m)return [];var uid=m[1];return [{name:'播放',url:'https://madou8.pw/asian/zh-CN/api/video/stream?videoUid='+uid}];}catch(e){return [];}} getPlay(__result);",
+      "name": "$.name",
+      "url": "$.url"
+    },
+    "toc": {
+      "list": "body@js:function getPlay(html){try{var m=html.match(/videoUid\\\"?\\s*[:=]\\s*[\\\"']([0-9a-fA-F]{10,})[\\\"']/);if(!m)return [];var uid=m[1];return [{name:'播放',url:'https://madou8.pw/asian/zh-CN/api/video/stream?videoUid='+uid}];}catch(e){return [];}} getPlay(__result);",
+      "name": "$.name",
+      "url": "$.url"
     }
   },
   {

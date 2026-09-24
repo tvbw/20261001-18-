@@ -1,0 +1,220 @@
+[
+  {
+    "name": "📺57短剧",
+    "api": "https://57duanju.org",
+    "type": 2,
+    "searchable": true,
+    "removeReferer": false,
+    "header": {
+      "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
+      "Referer": "https://57duanju.org/",
+      "Accept-Language": "zh-CN,zh;q=0.9"
+    },
+    "categories": [
+      {
+        "name": "成人AI短剧",
+        "url": "/aichengduanju/{{page}}/",
+        "url2": "/aichengduanju/"
+      },
+      {
+        "name": "热门短剧",
+        "url": "/hot-dramas/{{page}}/",
+        "url2": "/hot-dramas/"
+      },
+      {
+        "name": "连载中",
+        "url": "/ongoing/{{page}}/",
+        "url2": "/ongoing/"
+      },
+      {
+        "name": "人气",
+        "url": "/popular/{{page}}/",
+        "url2": "/popular/"
+      },
+      {
+        "name": "排行",
+        "url": "/top/{{page}}/",
+        "url2": "/top/"
+      }
+    ],
+    "list": {
+      "list": "a[href*='/events/']",
+      "name": "img@alt||@title||text",
+      "tips": "",
+      "coverUrl": "img@src||img@data-src",
+      "detailUrl": "href"
+    },
+    "search": {
+      "url": "/search/?q={{key}}",
+      "list": "a[href*='/events/']",
+      "name": "img@alt||@title||text",
+      "coverUrl": "img@src||img@data-src",
+      "detailUrl": "href"
+    },
+    "detail": {
+      "meta": "title@text||h1@text"
+    },
+    "play": {
+      "list": "video",
+      "name": "播放",
+      "url": "data-hls-src||data-fallback-src||src||data-hls"
+    },
+    "toc": {
+      "list": "video",
+      "name": "播放",
+      "url": "data-hls-src||data-fallback-src||src||data-hls"
+    }
+  },
+  {
+    "api": "https://tinyavideo.com",
+    "type": 2,
+    "searchable": true,
+    "removeReferer": false,
+    "header": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      "Referer": "https://tinyavideo.com/",
+      "Accept-Language": "zh-CN,zh;q=0.9"
+    },
+    "categories": [
+      {
+        "name": "日本-最新",
+        "url": "/japanese/new?page={{page}}",
+        "url2": "/japanese/new"
+      },
+      {
+        "name": "日本-今日热门",
+        "url": "/japanese/today-hot?page={{page}}",
+        "url2": "/japanese/today-hot"
+      },
+      {
+        "name": "无码流出",
+        "url": "/uncensored-leak/new?page={{page}}",
+        "url2": "/uncensored-leak/new"
+      },
+      {
+        "name": "FC2最新",
+        "url": "/fc2/new?page={{page}}",
+        "url2": "/fc2/new"
+      },
+      {
+        "name": "亚洲最新",
+        "url": "/asian/new?page={{page}}",
+        "url2": "/asian/new"
+      },
+      {
+        "name": "欧美最新",
+        "url": "/western/new?page={{page}}",
+        "url2": "/western/new"
+      }
+    ],
+    "list": {
+      "list": "a[href*='/video/']",
+      "name": "img@alt",
+      "tips": ".count-number@text",
+      "coverUrl": "img@src||img@data-src",
+      "detailUrl": "href"
+    },
+    "search": {
+      "url": "/search?fulltext={{key}}",
+      "list": "a[href*='/video/']",
+      "name": "img@alt",
+      "coverUrl": "img@src",
+      "detailUrl": "href"
+    },
+    "detail": {
+      "meta": "title@text||h1@text"
+    },
+    "name": "📺TinyAV",
+    "play": {
+      "list": "body",
+      "name": "播放",
+      "url": "text@js:var h=String(result||'');var m=h.match(/\"contentUrl\"\\s*:\\s*\"([^\"]+)\"/);if(m)m[1];else{m=h.match(/https?:\\/\\/[^\\s\"'<>]+\\.m3u8[^\\s\"'<>]*/);m?m[0]:'';}",
+      "header": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "Referer": "https://tinyavideo.com/",
+        "Origin": "https://tinyavideo.com"
+      }
+    },
+    "toc": {
+      "list": "body",
+      "name": "播放",
+      "url": "text@js:var h=String(result||'');var m=h.match(/\"contentUrl\"\\s*:\\s*\"([^\"]+)\"/);if(m)m[1];else{m=h.match(/https?:\\/\\/[^\\s\"'<>]+\\.m3u8[^\\s\"'<>]*/);m?m[0]:'';}"
+    }
+  },
+  {
+    "api": "https://tinyavideo.com",
+    "type": 2,
+    "searchable": true,
+    "removeReferer": false,
+    "header": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      "Referer": "https://tinyavideo.com/",
+      "Accept-Language": "zh-CN,zh;q=0.9"
+    },
+    "categories": [
+      {
+        "name": "日本-最新",
+        "url": "/japanese/new?page={{page}}",
+        "url2": "/japanese/new"
+      },
+      {
+        "name": "日本-今日热门",
+        "url": "/japanese/today-hot?page={{page}}",
+        "url2": "/japanese/today-hot"
+      },
+      {
+        "name": "无码流出",
+        "url": "/uncensored-leak/new?page={{page}}",
+        "url2": "/uncensored-leak/new"
+      },
+      {
+        "name": "FC2最新",
+        "url": "/fc2/new?page={{page}}",
+        "url2": "/fc2/new"
+      },
+      {
+        "name": "亚洲最新",
+        "url": "/asian/new?page={{page}}",
+        "url2": "/asian/new"
+      },
+      {
+        "name": "欧美最新",
+        "url": "/western/new?page={{page}}",
+        "url2": "/western/new"
+      }
+    ],
+    "list": {
+      "list": "a[href*='/video/']",
+      "name": "img@alt",
+      "tips": ".count-number@text",
+      "coverUrl": "img@src||img@data-src",
+      "detailUrl": "href"
+    },
+    "search": {
+      "url": "/search?fulltext={{key}}",
+      "list": "a[href*='/video/']",
+      "name": "img@alt",
+      "coverUrl": "img@src",
+      "detailUrl": "href"
+    },
+    "detail": {
+      "meta": "title@text||h1@text"
+    },
+    "name": "📺TinyAV(JS)",
+    "play": {
+      "list": "body@js:(function(h){h=String(h||'');var o=[],s={};function a(n,u){u=(u||'').replace(/&amp;/g,'&').trim();if(!u||s[u]||!/m3u8|\\.mp4/i.test(u))return;s[u]=1;o.push({name:n||('播放'+o.length),url:u});}var m=h.match(/\"contentUrl\"\\s*:\\s*\"([^\"]+)\"/);if(m)a('正片',m[1]);m=h.match(/window\\.m3u8List\\s*=\\s*\\[([\\s\\S]*?)\\]/);if(m){(m[1].match(/https?:[^\"'\\s]+/g)||[]).forEach(function(u,i){a(i?'线路'+(i+1):'播放',u.replace(/[\"',]/g,''));});}var r=/https?:\\/\\/[^\\s\"'<>]+\\.m3u8[^\\s\"'<>]*/gi;while((m=r.exec(h)))a('HLS',m[0]);return o;})(__result)",
+      "name": "$.name",
+      "url": "$.url",
+      "header": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "Referer": "https://tinyavideo.com/",
+        "Origin": "https://tinyavideo.com"
+      }
+    },
+    "toc": {
+      "list": "body@js:(function(h){h=String(h||'');var o=[],s={};function a(n,u){u=(u||'').replace(/&amp;/g,'&').trim();if(!u||s[u]||!/m3u8|\\.mp4/i.test(u))return;s[u]=1;o.push({name:n||('播放'+o.length),url:u});}var m=h.match(/\"contentUrl\"\\s*:\\s*\"([^\"]+)\"/);if(m)a('正片',m[1]);m=h.match(/window\\.m3u8List\\s*=\\s*\\[([\\s\\S]*?)\\]/);if(m){(m[1].match(/https?:[^\"'\\s]+/g)||[]).forEach(function(u,i){a(i?'线路'+(i+1):'播放',u.replace(/[\"',]/g,''));});}var r=/https?:\\/\\/[^\\s\"'<>]+\\.m3u8[^\\s\"'<>]*/gi;while((m=r.exec(h)))a('HLS',m[0]);return o;})(__result)",
+      "name": "$.name",
+      "url": "$.url"
+    }
+  }
+]

@@ -49,9 +49,10 @@ const SOURCES = {
     's39': { 'name': '🐾如意', 'api': 'https://cj.rycjapi.com/api.php/provide/vod/' },
     's40': { 'name': '🐾火狐', 'api': 'https://hhzyapi.com/api.php/provide/vod/' },
     's41': { 'name': '🐾刺桐', 'api': 'http://pg.cttv.vip/api.php/provide/vod/' },
-    's42': { 'name': '🐾荐片', 'api': 'http://192.129.140.23:5757/api/荐片[优]?pwd=dzyyds', 'type': 2 },
-    's43': { 'name': '🐾tvbx', 'api': 'https://dy.7772888.xyz/api.php/tvbox', 'type': 1 },
-    's44': { 'name': '📺魔都', 'api': 'https://www.mdzyapi.com/api.php/provide/vod' }
+    's42': { 'name': '🐾巨量', 'api': 'https://api.juliang.live/api/provide/vod/' },
+    's43': { 'name': '🐾荐片', 'api': 'http://192.129.140.23:5757/api/荐片[优]?pwd=dzyyds', 'type': 2 },
+    's44': { 'name': '🐾tvbx', 'api': 'https://dy.7772888.xyz/api.php/tvbox', 'type': 1 },
+    's45': { 'name': '📺魔都', 'api': 'https://www.mdzyapi.com/api.php/provide/vod' }
     
 };
 
@@ -110,9 +111,17 @@ async function request(url, optHeaders = {}, body) {
 function safeJson(str) {
     try {
         if (!str) return null;
-        return JSON.parse(str);
+        // 巨量等源 vod_id 为雪花ID，超过 Number.MAX_SAFE_INTEGER，直接 JSON.parse 会丢精度
+        // 把超大整数字段强制变成字符串再解析
+        let s = String(str);
+        s = s.replace(/"(vod_id|id|type_id|list_id|vodId)"\s*:\s*(\d{16,})/g, '"$1":"$2"');
+        return JSON.parse(s);
     } catch (e) {
-        return null;
+        try {
+            return JSON.parse(str);
+        } catch (e2) {
+            return null;
+        }
     }
 }
 
@@ -301,8 +310,10 @@ function parseResponse(html) {
 
 function cleanItem(item, sourceKey, sourceName, isDetail = false) {
     const o = normalizeVod(Object.assign({}, item));
+    // 始终字符串化，避免大整数精度丢失
+    o.vod_id = text(o.vod_id);
     if (!isDetail) {
-        o.vod_id = `${sourceKey}@@${text(o.vod_id)}`;
+        o.vod_id = `${sourceKey}@@${o.vod_id}`;
     }
     const rem = text(o.vod_remarks || "");
     o.vod_remarks = `${sourceName} | ${rem}`;
@@ -557,12 +568,23 @@ async function detail(vodIdRaw) {
 
 async function play(flag, id, flags) {
     try {
-        const playUrl = text(id);
+        let playUrl = text(id);
+        // 去掉可能附带的 header sugar（部分源）
+        if (playUrl.indexOf(';') > 8 && /https?:\/\//i.test(playUrl)) {
+            const first = playUrl.split(';')[0];
+            if (/^https?:\/\//i.test(first)) playUrl = first;
+        }
         const needParse = !isDirectPlayUrl(playUrl);
+        const headers = {
+            "User-Agent": UA,
+            "Referer": "https://api.juliang.live/"
+        };
+        // jlplayer 落地页需要壳解析；m3u8/mp4 直链
         return JSON.stringify({
             parse: needParse ? 1 : 0,
+            jx: 0,
             url: playUrl,
-            header: { "User-Agent": UA }
+            header: headers
         });
     } catch (e) {
         console.error("play error", e.message);

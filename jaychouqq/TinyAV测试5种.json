@@ -1,0 +1,64 @@
+[
+
+    {
+    "name": "TinyAV-E(line)",
+    "api": "https://tinyavideo.com",
+    "type": 2,
+    "searchable": true,
+    "removeReferer": false,
+    "header": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      "Referer": "https://tinyavideo.com/",
+      "Accept-Language": "zh-CN,zh;q=0.9"
+    },
+    "categories": [
+      {
+        "name": "日本-最新",
+        "url": "/japanese/new?page={{page}}",
+        "url2": "/japanese/new"
+      },
+      {
+        "name": "日本-今日热门",
+        "url": "/japanese/today-hot?page={{page}}",
+        "url2": "/japanese/today-hot"
+      },
+      {
+        "name": "无码流出",
+        "url": "/uncensored-leak/new?page={{page}}",
+        "url2": "/uncensored-leak/new"
+      },
+      {
+        "name": "FC2最新",
+        "url": "/fc2/new?page={{page}}",
+        "url2": "/fc2/new"
+      },
+      {
+        "name": "亚洲最新",
+        "url": "/asian/new?page={{page}}",
+        "url2": "/asian/new"
+      }
+    ],
+    "list": {
+      "list": "a[href*='/video/']",
+      "name": "img@alt",
+      "tips": ".count-number@text",
+      "coverUrl": "img@src||img@data-src",
+      "detailUrl": "href"
+    },
+    "search": {
+      "url": "/search?fulltext={{key}}",
+      "list": "a[href*='/video/']",
+      "name": "img@alt",
+      "coverUrl": "img@src",
+      "detailUrl": "href"
+    },
+    "detail": {
+      "meta": "title@text||h1@text"
+    },
+    "line": {
+      "list": "body",
+      "name": "默认",
+      "contentList": "text@js:var h=String(result||'');var m=h.match(/\"contentUrl\"\\s*:\\s*\"([^\"]+)\"/);m?m[1]:((m=h.match(/https?:\\/\\/[^\\s\"'<>]+\\.m3u8[^\\s\"'<>]*/))?m[0]:'');"
+    }
+  }
+]
