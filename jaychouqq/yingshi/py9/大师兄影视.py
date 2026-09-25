@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-"""DaShiXiong TVBox source for dsxys8.com."""
 
 import ast
 import base64
@@ -27,24 +26,91 @@ except ImportError:
 
 
 class Spider(BaseSpider):
-    DEFAULT_HOST = "https://www.dsxys8.com"
+    DEFAULT_HOST = "http://www.dsxys8.com"
     DEFAULT_UA = (
-        "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36"
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
     )
+    # 主分类列表（补全理论片，ID: 20）
     CLASSES = [
-        {"type_name": "\u7535\u5f71", "type_id": "1"},
-        {"type_name": "\u7535\u89c6", "type_id": "2"},
-        {"type_name": "\u7efc\u827a", "type_id": "3"},
-        {"type_name": "\u52a8\u6f2b", "type_id": "4"},
-        {"type_name": "\u77ed\u5267", "type_id": "27"},
-        {"type_name": "\u7eaa\u7247", "type_id": "20"},
+        {"type_name": "电影", "type_id": "1"},
+        {"type_name": "连续剧", "type_id": "2"},
+        {"type_name": "综艺", "type_id": "3"},
+        {"type_name": "动漫", "type_id": "4"},
+        {"type_name": "短剧", "type_id": "27"},
+        {"type_name": "理论片", "type_id": "20"},
     ]
+
+    # 二级子分类筛选字典（基于真实探针萃取数据构建）
+    FILTERS = {
+        "1": [
+            {
+                "key": "sub_tid",
+                "name": "子分类",
+                "value": [
+                    {"n": "全部", "v": "1"},
+                    {"n": "动作片", "v": "5"},
+                    {"n": "喜剧片", "v": "6"},
+                    {"n": "爱情片", "v": "7"},
+                    {"n": "科幻片", "v": "8"},
+                    {"n": "恐怖片", "v": "9"},
+                    {"n": "剧情片", "v": "10"},
+                    {"n": "战争片", "v": "11"},
+                    {"n": "纪录片", "v": "22"},
+                    {"n": "动画片", "v": "33"}
+                ]
+            }
+        ],
+        "2": [
+            {
+                "key": "sub_tid",
+                "name": "子分类",
+                "value": [
+                    {"n": "全部", "v": "2"},
+                    {"n": "国产剧", "v": "12"},
+                    {"n": "香港剧", "v": "13"},
+                    {"n": "台湾剧", "v": "14"},
+                    {"n": "日本剧", "v": "15"},
+                    {"n": "韩国剧", "v": "16"},
+                    {"n": "欧美剧", "v": "17"},
+                    {"n": "海外剧", "v": "18"},
+                    {"n": "泰国剧", "v": "19"}
+                ]
+            }
+        ],
+        "3": [
+            {
+                "key": "sub_tid",
+                "name": "子分类",
+                "value": [
+                    {"n": "全部", "v": "3"},
+                    {"n": "内地综艺", "v": "23"},
+                    {"n": "港台综艺", "v": "24"},
+                    {"n": "日韩综艺", "v": "25"},
+                    {"n": "欧美综艺", "v": "26"}
+                ]
+            }
+        ],
+        "4": [
+            {
+                "key": "sub_tid",
+                "name": "子分类",
+                "value": [
+                    {"n": "全部", "v": "4"},
+                    {"n": "国产动漫", "v": "28"},
+                    {"n": "港台动漫", "v": "29"},
+                    {"n": "日韩动漫", "v": "30"},
+                    {"n": "欧美动漫", "v": "31"},
+                    {"n": "海外动漫", "v": "32"}
+                ]
+            }
+        ]
+    }
+
     DETAIL_RE = re.compile(r"/detail-([^/?#'\"<>]+)/", re.I)
     PLAY_RE = re.compile(r"/play-([^/?#'\"<>]+)-(\d+)-(\d+)/", re.I)
     MEDIA_EXTENSIONS = (".m3u8", ".mp4", ".mkv", ".flv", ".ts", ".webm")
     CF_SIGNS = ("just a moment", "checking your browser", "attention required! | cloudflare")
-    AD_KEYWORDS = ("/ad/", "/ads/", "advert", "adsegment", "adservice", "/gg/")
 
     def __init__(self):
         try:
@@ -57,13 +123,19 @@ class Spider(BaseSpider):
         self.timeout = 15
         self.use_cffi = False
         self.proxy_enabled = False
+        self.tgGroup = "https://t.me/tvshare23"
+        self.brandActor = "🦋 TG群: @tvshare23"
+        self.brandDirector = "🦋 蝴蝶影视"
         self.session = requests.Session()
         self.headers = {}
         self._refresh_headers()
 
     def init(self, extend=""):
         config = self._parse_extend(extend)
-        self.host = str(config.get("host") or self.DEFAULT_HOST).strip().rstrip("/")
+        raw_host = str(config.get("host") or self.DEFAULT_HOST).strip().rstrip("/")
+        if raw_host.startswith("https://"):
+            raw_host = "http://" + raw_host[len("https://"):]
+        self.host = raw_host
         self.ua = str(config.get("ua") or self.DEFAULT_UA).strip()
         self.cookie = str(config.get("cookie") or "").strip()
         self.timeout = self._safe_int(config.get("timeout"), 15, 5, 60)
@@ -74,7 +146,7 @@ class Spider(BaseSpider):
         return True
 
     def getName(self):
-        return "\u5927\u5e08\u5144\u5f71\u89c6"
+        return "蝴蝶影视·大师兄"
 
     def destroy(self):
         try:
@@ -100,7 +172,7 @@ class Spider(BaseSpider):
             return default
         if isinstance(value, bool):
             return value
-        return str(value).strip().lower() in {"1", "true", "yes", "on", "y", "\u662f", "\u5f00\u542f"}
+        return str(value).strip().lower() in {"1", "true", "yes", "on", "y", "是", "开启"}
 
     @staticmethod
     def _parse_extend(extend):
@@ -123,8 +195,8 @@ class Spider(BaseSpider):
     def _refresh_headers(self):
         self.headers = {
             "User-Agent": self.ua,
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.6",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
             "Cache-Control": "no-cache",
             "Pragma": "no-cache",
         }
@@ -140,11 +212,34 @@ class Spider(BaseSpider):
         if not url:
             return None
         target = self._absolute(url, referer or self.host)
+        if target.startswith("https://www.dsxys8.com"):
+            target = "http://www.dsxys8.com" + target[len("https://www.dsxys8.com"):]
+
         headers = dict(self.headers)
         if referer:
             headers["Referer"] = referer
         if binary:
             headers["Accept"] = "*/*"
+
+        if self.use_cffi and cffi_requests is not None:
+            try:
+                response = cffi_requests.get(
+                    target,
+                    headers=headers,
+                    timeout=self.timeout,
+                    allow_redirects=True,
+                    impersonate="chrome131"
+                )
+                if getattr(response, "status_code", 200) < 400:
+                    if not binary:
+                        response.encoding = getattr(response, "apparent_encoding", None) or "utf-8"
+                        if not self._is_cloudflare_text(response.text):
+                            return response
+                    else:
+                        return response
+            except Exception:
+                pass
+
         for attempt in range(2):
             try:
                 response = self.session.get(target, headers=headers, timeout=self.timeout, allow_redirects=True)
@@ -157,20 +252,7 @@ class Spider(BaseSpider):
                 return response
             except Exception:
                 if attempt == 0:
-                    time.sleep(0.2)
-        if self.use_cffi and cffi_requests is not None:
-            try:
-                response = cffi_requests.get(target, headers=headers, timeout=self.timeout,
-                                             allow_redirects=True, impersonate="chrome131")
-                if getattr(response, "status_code", 200) >= 400:
-                    return None
-                if not binary:
-                    response.encoding = getattr(response, "apparent_encoding", None) or "utf-8"
-                    if self._is_cloudflare_text(response.text):
-                        return None
-                return response
-            except Exception:
-                pass
+                    time.sleep(0.3)
         return None
 
     @staticmethod
@@ -196,13 +278,12 @@ class Spider(BaseSpider):
         lower = (text or "")[:100000].lower()
         return any(sign in lower for sign in cls.CF_SIGNS)
 
-    @staticmethod
-    def _absolute(url, base):
+    def _absolute(self, url, base):
         if not url:
             return ""
         value = html_module.unescape(str(url).strip()).replace("\\/", "/")
         if value.startswith("//"):
-            return (urlparse(base).scheme or "https") + ":" + value
+            return "http:" + value
         return urljoin(base, value)
 
     @staticmethod
@@ -220,22 +301,14 @@ class Spider(BaseSpider):
         match = re.search(rf"\b{re.escape(name)}\s*=\s*[\"']([^\"']*)", attrs or "", re.I)
         return html_module.unescape(match.group(1).strip()) if match else ""
 
-    @classmethod
-    def _normalize_episode(cls, name):
-        value = cls._clean_text(name)
-        match = re.search(r"\u7b2c\s*0*(\d+)\s*[\u96c6\u671f]", value)
-        if match:
-            return "\u7b2c" + str(int(match.group(1))) + "\u96c6"
-        return value or "\u64ad\u653e"
-
     def _parse_video_list(self, source, page_url):
         records = []
         seen = set()
-        pattern = re.compile(r"<a\b([^>]*href=[\"']([^\"']*/detail-[^\"']+/)[\"'][^>]*)>(.*?)</a>", re.I | re.S)
+        pattern = re.compile(r"<a\b([^>]*href=[\"']([^\"']*/detail[-/][^\"']+)[\"'][^>]*)>(.*?)</a>", re.I | re.S)
         for match in pattern.finditer(source or ""):
             attrs, href, body = match.groups()
             absolute = self._absolute(href, page_url or self.host)
-            path = urlparse(absolute).path.rstrip("/") + "/"
+            path = urlparse(absolute).path
             if path in seen:
                 continue
             seen.add(path)
@@ -252,11 +325,17 @@ class Spider(BaseSpider):
             pic = self._absolute(pic_match.group(1), absolute) if pic_match else ""
             remark_match = re.search(r"(?:pic-text|text-right|text-muted)[^>]*>(.*?)</(?:span|p|div)>", body, re.I | re.S)
             remark = self._clean_text(remark_match.group(1)) if remark_match else ""
-            records.append({"vod_id": path, "vod_name": self._clean_text(title), "vod_pic": pic, "vod_remarks": remark})
+            records.append({
+                "vod_id": path,
+                "vod_name": self._clean_text(title),
+                "vod_pic": pic,
+                "vod_remarks": remark or "蝴蝶影视",
+                "style": {"type": "rect", "ratio": 1.78}
+            })
         return records
 
     def homeContent(self, filter=False):
-        return {"class": list(self.CLASSES), "filters": {}}
+        return {"class": list(self.CLASSES), "filters": self.FILTERS}
 
     def homeVideoContent(self):
         source = self._get_text(self.host + "/", referer=self.host + "/")
@@ -264,12 +343,28 @@ class Spider(BaseSpider):
 
     def categoryContent(self, tid, pg, filter=False, extend=None):
         page = self._safe_int(pg, 1, 1)
-        tid = str(tid or "1")
-        paths = [f"/sort-{tid}/" if page == 1 else f"/sort-{tid}-{page}/"]
-        if page > 1:
-            paths.append(f"/sort-{tid}/?page={page}")
+        ext = extend or {}
+        if isinstance(ext, str):
+            try:
+                ext = json.loads(ext)
+            except Exception:
+                ext = {}
+
+        # 核心联动：若用户点击了筛选栏中的子分类，则使用选中的具体子分类 ID
+        target_tid = str(ext.get("sub_tid") or tid or "1").strip()
+
+        paths = [
+            f"/sort-{target_tid}/" if page == 1 else f"/sort-{target_tid}-{page}/",
+            f"/sort/{target_tid}.html" if page == 1 else f"/sort/{target_tid}-{page}.html"
+        ]
         videos, source = self._fetch_list(paths)
-        return {"list": videos, "page": page, "pagecount": self._pagecount(source, page), "limit": len(videos), "total": len(videos)}
+        return {
+            "list": videos,
+            "page": page,
+            "pagecount": self._pagecount(source, page),
+            "limit": len(videos),
+            "total": len(videos)
+        }
 
     def _fetch_list(self, paths):
         last = ""
@@ -304,73 +399,126 @@ class Spider(BaseSpider):
         raw_id = str(raw_id or "").strip()
         if not raw_id:
             return {"list": []}
-        if not raw_id.startswith("/detail-"):
-            raw_id = "/detail-%s/" % raw_id.strip("/")
         detail_url = self._absolute(raw_id, self.host)
         source = self._get_text(detail_url, referer=self.host + "/")
         item = self._detail_metadata(source, detail_url)
         play_from, play_url = self._extract_plays(source, detail_url)
-        item.update({"vod_id": raw_id, "vod_play_from": "$$$".join(play_from), "vod_play_url": "$$$".join(play_url)})
+
+        full_desc = (
+            "【🔥 官方TG群: %s】\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "%s"
+        ) % (self.tgGroup, item.get("vod_content", ""))
+
+        escaped_desc = full_desc.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+        item.update({
+            "vod_id": raw_id,
+            "vod_actor": self.brandActor if not item.get("vod_actor") else f"{self.brandActor} / {item['vod_actor']}",
+            "vod_director": self.brandDirector if not item.get("vod_director") else f"{self.brandDirector} / {item['vod_director']}",
+            "vod_content": escaped_desc,
+            "vod_play_from": "$$$".join(play_from) if play_from else "蝴蝶极速线路",
+            "vod_play_url": "$$$".join(play_url) if play_url else f"立即播放${detail_url}"
+        })
         return {"list": [item]}
 
     def _detail_metadata(self, source, detail_url):
-        item = {"vod_name": "\u672a\u77e5\u5f71\u7247", "vod_pic": "", "type_name": "", "vod_year": "", "vod_area": "", "vod_remarks": "", "vod_actor": "", "vod_director": "", "vod_content": ""}
-        title = re.search(r"<h1\b[^>]*>(.*?)</h1>", source or "", re.I | re.S)
-        if not title:
-            title = re.search(r'<meta\b[^>]*property=["\']og:title["\'][^>]*content=["\']([^"\']+)', source or "", re.I)
-        if title:
-            item["vod_name"] = self._clean_text(title.group(1))
-        pic = re.search(r'<meta\b[^>]*property=["\']og:image["\'][^>]*content=["\']([^"\']+)', source or "", re.I)
+        item = {
+            "vod_name": "未知影片",
+            "vod_pic": "",
+            "type_name": "",
+            "vod_year": "",
+            "vod_area": "",
+            "vod_remarks": "蝴蝶影视",
+            "vod_actor": "",
+            "vod_director": "",
+            "vod_content": ""
+        }
+        if not source:
+            return item
+
+        title_val = ""
+        for pat in (
+            r'<h1\b[^>]*>(.*?)</h1>',
+            r'<h2\b[^>]*class=["\'][^"\']*title[^"\']*["\'][^>]*>(.*?)</h2>',
+            r'<div\b[^>]*class=["\'][^"\']*title[^"\']*["\'][^>]*>(.*?)</div>',
+            r'<meta\b[^>]*property=["\']og:title["\'][^>]*content=["\']([^"\']+)',
+            r'<meta\b[^>]*name=["\']keywords["\'][^>]*content=["\']([^"\',]+)'
+        ):
+            m = re.search(pat, source, re.I | re.S)
+            if m:
+                cand = self._clean_text(m.group(1))
+                if cand and cand != "未知影片" and len(cand) < 40:
+                    title_val = cand
+                    break
+
+        if not title_val:
+            m = re.search(r'<title\b[^>]*>(.*?)</title>', source, re.I | re.S)
+            if m:
+                raw_t = self._clean_text(m.group(1))
+                clean_t = re.sub(r'(-|_|\s+)(大师兄影视|海量高清|免费在线观看|在线播放|电视剧|电影|全集).*$', '', raw_t, flags=re.I).strip()
+                if clean_t:
+                    title_val = clean_t
+
+        if not title_val:
+            m = re.search(r'(?:为您提供|提供).*?片\s*([^\s,，。]+?)\s*在线', source)
+            if m:
+                title_val = self._clean_text(m.group(1))
+
+        if title_val:
+            item["vod_name"] = title_val
+
+        pic = re.search(r'<meta\b[^>]*property=["\']og:image["\'][^>]*content=["\']([^"\']+)', source, re.I)
         if not pic:
-            pic = re.search(r'(?:data-original|data-src|src)=["\']([^"\']+\.(?:jpg|jpeg|png|webp))', source or "", re.I)
+            pic = re.search(r'(?:data-original|data-src|src)=["\']([^"\']+\.(?:jpg|jpeg|png|webp))', source, re.I)
         if pic:
             item["vod_pic"] = self._absolute(pic.group(1), detail_url)
-        description = re.search(r'<meta\b[^>]*(?:name|property)=["\'](?:description|og:description)["\'][^>]*content=["\']([^"\']+)', source or "", re.I)
+
+        description = re.search(r'<meta\b[^>]*(?:name|property)=["\'](?:description|og:description)["\'][^>]*content=["\']([^"\']+)', source, re.I)
         if description:
             item["vod_content"] = self._clean_text(description.group(1))
+
         plain = self._clean_text(source)
-        for label, field in (("\u7c7b\u578b", "type_name"), ("\u5e74\u4efd", "vod_year"), ("\u5730\u533a", "vod_area"), ("\u4e3b\u6f14", "vod_actor"), ("\u5bfc\u6f14", "vod_director")):
-            found = re.search(label + r"\s*[\uff1a:]\s*([^|]{1,120})", plain)
+        for label, field in (("类型", "type_name"), ("年份", "vod_year"), ("地区", "vod_area"), ("主演", "vod_actor"), ("导演", "vod_director")):
+            found = re.search(label + r"\s*[:：]\s*([^|]{1,120})", plain)
             if found:
                 item[field] = self._clean_text(found.group(1))
+
         year = re.search(r"\b(20\d{2})\b", plain)
         if year and not item["vod_year"]:
             item["vod_year"] = year.group(1)
+
         return item
 
     def _extract_plays(self, source, detail_url):
-        detail_match = self.DETAIL_RE.search(urlparse(detail_url).path + "/")
-        content_id = detail_match.group(1) if detail_match else ""
         groups, order = {}, []
-        for match in re.finditer(r"<a\b([^>]*href=[\"']([^\"']*/play-[^\"']+/)[\"'][^>]*)>(.*?)</a>", source or "", re.I | re.S):
+        for match in re.finditer(r"<a\b([^>]*href=[\"']([^\"']*/play[-/][^\"']+)[\"'][^>]*)>(.*?)</a>", source or "", re.I | re.S):
             attrs, href, body = match.groups()
             play_match = self.PLAY_RE.search(href)
-            if not play_match or (content_id and play_match.group(1) != content_id):
-                continue
-            sid = play_match.group(2)
+            sid = play_match.group(2) if play_match else "1"
             absolute = self._absolute(href, detail_url)
             name = self._normalize_episode(self._clean_text(body))
             groups.setdefault(sid, {})
             if sid not in order:
                 order.append(sid)
             old = groups[sid].get(absolute)
-            if old is None or old == "\u64ad\u653e" or "\u7b2c" in name:
+            if old is None or old == "播放" or "第" in name:
                 groups[sid][absolute] = name
         play_from, play_url = [], []
-        for sid in sorted(order, key=lambda value: int(value)):
+        for sid in sorted(order, key=lambda value: int(value) if value.isdigit() else 1):
             episodes = [f"{name}${url}" for url, name in groups[sid].items()]
             if episodes:
-                play_from.append("\u7ebf\u8def" + sid)
+                play_from.append("蝴蝶极速线路" + sid)
                 play_url.append("#".join(episodes))
         return play_from, play_url
 
     @classmethod
     def _normalize_episode(cls, name):
         value = cls._clean_text(name)
-        found = re.search(r"\u7b2c\s*0*(\d+)\s*[\u96c6\u671f]", value)
+        found = re.search(r"第\s*0*(\d+)\s*[集期]", value)
         if found:
-            return "\u7b2c" + str(int(found.group(1))) + "\u96c6"
-        return value or "\u64ad\u653e"
+            return "第" + str(int(found.group(1))) + "集"
+        return value or "播放"
 
     def playerContent(self, flag, id, vipFlags=None):
         play_url = self._absolute(str(id or ""), self.host)
@@ -483,78 +631,7 @@ class Spider(BaseSpider):
         return headers
 
     def _direct_result(self, url, headers):
-        final = url
-        if self.proxy_enabled and ".m3u8" in url.lower():
-            proxied = self._proxy_url(url, headers.get("Referer", ""), "m3u8")
-            if proxied:
-                final, headers = proxied, {}
-        return {"parse": 0, "jx": 0, "url": final, "header": headers}
-
-    def localProxy(self, param):
-        params = param or {}
-        mode = self._param(params, "mode") or "segment"
-        real_url = self._b64_decode(self._param(params, "url"))
-        referer = self._b64_decode(self._param(params, "ref")) or real_url
-        if not real_url:
-            return [400, "text/plain", {}, b"missing url"]
-        response = self._request_raw(real_url, referer=referer, binary=True)
-        if response is None:
-            return [502, "text/plain", {}, b"upstream request failed"]
-        content_type = response.headers.get("Content-Type", "application/octet-stream")
-        if mode == "m3u8" or ".m3u8" in real_url.lower() or "mpegurl" in content_type.lower():
-            try:
-                response.encoding = "utf-8"
-                text = response.text
-            except Exception:
-                text = response.content.decode("utf-8", "ignore")
-            return [200, "application/vnd.apple.mpegurl", {}, self._rewrite_m3u8(text, real_url)]
-        return [response.status_code, content_type, {}, response.content]
-
-    @staticmethod
-    def _param(params, key):
-        value = params.get(key, "") if isinstance(params, dict) else ""
-        return value[-1] if isinstance(value, (list, tuple)) and value else value
-
-    def _rewrite_m3u8(self, playlist, playlist_url):
-        result = []
-        for raw in (playlist or "").splitlines():
-            line = raw.strip()
-            if not line:
-                continue
-            if not line.startswith("#"):
-                absolute = self._absolute(line, playlist_url)
-                if any(word in absolute.lower() for word in self.AD_KEYWORDS):
-                    continue
-                mode = "m3u8" if ".m3u8" in absolute.lower() else "segment"
-                result.append(self._proxy_url(absolute, playlist_url, mode) or absolute)
-                continue
-            if "URI=" in line.upper():
-                line = re.sub(r"URI=([\"'])(.*?)\1", lambda m: 'URI="%s"' % (self._proxy_url(self._absolute(m.group(2), playlist_url), playlist_url, "key") or self._absolute(m.group(2), playlist_url)), line, flags=re.I)
-            result.append(line)
-        return "\n".join(result) + "\n"
-
-    def _proxy_url(self, real_url, referer, mode):
-        try:
-            base = self.getProxyUrl()
-        except Exception:
-            base = ""
-        if not base:
-            return ""
-        separator = "&" if "?" in base else "?"
-        query = "mode=%s&url=%s&ref=%s" % (mode, quote(self._b64_encode(real_url), safe=""), quote(self._b64_encode(referer or real_url), safe=""))
-        return base + separator + query
-
-    @staticmethod
-    def _b64_encode(value):
-        return base64.urlsafe_b64encode(str(value).encode()).decode().rstrip("=")
-
-    @staticmethod
-    def _b64_decode(value):
-        try:
-            text = str(value or "")
-            return base64.urlsafe_b64decode(text + "=" * (-len(text) % 4)).decode()
-        except Exception:
-            return ""
+        return {"parse": 0, "jx": 0, "url": url, "header": headers}
 
     @staticmethod
     def _origin_root(url):

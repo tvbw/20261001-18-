@@ -102,6 +102,30 @@
             "type": 3,
             "api": "https://ghfast.top/https://raw.githubusercontent.com/phu889/kjh998/refs/heads/main/py/ASMR吧.py"
         },
+        {
+        	"key": "魔法影视",
+            "name": "🐬[追剧]魔法影视",
+            "type": 3,
+            "api": "https://ghfast.top/https://raw.githubusercontent.com/phu889/kjh998/refs/heads/main/py/魔法影视.py"
+		},
+        {
+        	"key": "云朵视频",
+            "name": "🐬[追剧]云朵视频(关梯)",
+            "type": 3,
+            "api": "https://ghfast.top/https://raw.githubusercontent.com/phu889/kjh998/refs/heads/main/py/云朵视频(关梯).py"
+		},
+        {
+        	"key": "追影",
+            "name": "🐬[追剧]追影",
+            "type": 3,
+            "api": "https://ghfast.top/https://raw.githubusercontent.com/phu889/kjh998/refs/heads/main/py/追影.py"
+		},
+        {
+        	"key": "独播库",
+            "name": "🐬[追剧]独播库",
+            "type": 3,
+            "api": "https://ghfast.top/https://raw.githubusercontent.com/phu889/kjh998/refs/heads/main/py/独播库.py"
+		},
 		{
         	"key": "网飞猫影视",
             "name": "🐬[追剧]网飞猫影视(关梯)",
@@ -167,12 +191,6 @@
             "name": "🐬[追剧]第七影院",
             "type": 3,
             "api": "https://ghfast.top/https://raw.githubusercontent.com/phu889/kjh998/refs/heads/main/py/第七影院.py"
-		},
-		{
-        	"key": "云朵影视",
-            "name": "🐬[追剧]云朵影视",
-            "type": 3,
-            "api": "https://ghfast.top/https://raw.githubusercontent.com/phu889/kjh998/refs/heads/main/py/云朵影视.py"
 		},
 		{
         	"key": "橘汁视频",

@@ -1,5 +1,241 @@
 [
   {
+    "name": "📺大师兄",
+    "api": "http://www.dsxys8.com",
+    "type": 2,
+    "searchable": true,
+    "removeReferer": false,
+    "header": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      "Referer": "http://www.dsxys8.com/",
+      "Accept-Language": "zh-CN,zh;q=0.9",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+    },
+    "categories": [
+      {
+        "name": "电影",
+        "url": "/sort-1-{{page}}/",
+        "url2": "/sort-1/"
+      },
+      {
+        "name": "连续剧",
+        "url": "/sort-2-{{page}}/",
+        "url2": "/sort-2/"
+      },
+      {
+        "name": "综艺",
+        "url": "/sort-3-{{page}}/",
+        "url2": "/sort-3/"
+      },
+      {
+        "name": "动漫",
+        "url": "/sort-4-{{page}}/",
+        "url2": "/sort-4/"
+      },
+      {
+        "name": "短剧",
+        "url": "/sort-27-{{page}}/",
+        "url2": "/sort-27/"
+      },
+      {
+        "name": "理论片",
+        "url": "/sort-20-{{page}}/",
+        "url2": "/sort-20/"
+      },
+      {
+        "name": "动作片",
+        "url": "/sort-5-{{page}}/",
+        "url2": "/sort-5/"
+      },
+      {
+        "name": "喜剧片",
+        "url": "/sort-6-{{page}}/",
+        "url2": "/sort-6/"
+      },
+      {
+        "name": "爱情片",
+        "url": "/sort-7-{{page}}/",
+        "url2": "/sort-7/"
+      },
+      {
+        "name": "科幻片",
+        "url": "/sort-8-{{page}}/",
+        "url2": "/sort-8/"
+      },
+      {
+        "name": "恐怖片",
+        "url": "/sort-9-{{page}}/",
+        "url2": "/sort-9/"
+      },
+      {
+        "name": "剧情片",
+        "url": "/sort-10-{{page}}/",
+        "url2": "/sort-10/"
+      },
+      {
+        "name": "战争片",
+        "url": "/sort-11-{{page}}/",
+        "url2": "/sort-11/"
+      },
+      {
+        "name": "国产剧",
+        "url": "/sort-12-{{page}}/",
+        "url2": "/sort-12/"
+      },
+      {
+        "name": "香港剧",
+        "url": "/sort-13-{{page}}/",
+        "url2": "/sort-13/"
+      },
+      {
+        "name": "台湾剧",
+        "url": "/sort-14-{{page}}/",
+        "url2": "/sort-14/"
+      },
+      {
+        "name": "日本剧",
+        "url": "/sort-15-{{page}}/",
+        "url2": "/sort-15/"
+      },
+      {
+        "name": "韩国剧",
+        "url": "/sort-16-{{page}}/",
+        "url2": "/sort-16/"
+      },
+      {
+        "name": "欧美剧",
+        "url": "/sort-17-{{page}}/",
+        "url2": "/sort-17/"
+      },
+      {
+        "name": "国产动漫",
+        "url": "/sort-28-{{page}}/",
+        "url2": "/sort-28/"
+      },
+      {
+        "name": "日韩动漫",
+        "url": "/sort-30-{{page}}/",
+        "url2": "/sort-30/"
+      }
+    ],
+    "list": {
+      "list": "a[href*='/detail-'], .stui-vodlist__thumb, .myui-vodlist__thumb, .module-item, .module-poster-item",
+      "name": "title||img@alt||.title@text||text",
+      "tips": ".pic-text@text||.pic-text1@text||.module-item-note@text||.text-right@text",
+      "coverUrl": "data-original||data-src||img@data-original||img@src||src",
+      "detailUrl": "href"
+    },
+    "search": {
+      "url": "/search--------------/?wd={{key}}",
+      "list": "a[href*='/detail-'], .stui-vodlist__thumb, .myui-vodlist__thumb, .module-item",
+      "name": "title||img@alt||.title@text",
+      "tips": ".pic-text@text||.module-item-note@text",
+      "coverUrl": "data-original||data-src||img@src||src",
+      "detailUrl": "href"
+    },
+    "detail": {
+      "meta": "h1@text||.stui-content__detail@html||.myui-content__detail@html||.module-info-introduction@html||title@text"
+    },
+    "play": {
+      "list": "a[href*='/play-'], .stui-content__playlist a, .myui-content__list a, .module-play-list a, .module-play-list-link",
+      "name": "text||title||span@text",
+      "url": "href"
+    },
+    "toc": {
+      "list": "a[href*='/play-'], .stui-content__playlist a, .myui-content__list a, .module-play-list a",
+      "name": "text||title||span@text",
+      "url": "href"
+    }
+  },
+  {
+    "name": "📺冠建影视",
+    "api": "https://www.pandaguard.com",
+    "type": 2,
+    "searchable": true,
+    "removeReferer": false,
+    "header": {
+      "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
+      "Referer": "https://www.pandaguard.com/",
+      "Accept-Language": "zh-CN,zh;q=0.9",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+    },
+    "categories": [
+      {
+        "name": "电影",
+        "url": "/lanmu/1/page/{{page}}/",
+        "url2": "/lanmu/1/"
+      },
+      {
+        "name": "连续剧",
+        "url": "/lanmu/2/page/{{page}}/",
+        "url2": "/lanmu/2/"
+      },
+      {
+        "name": "综艺",
+        "url": "/lanmu/3/page/{{page}}/",
+        "url2": "/lanmu/3/"
+      },
+      {
+        "name": "动漫",
+        "url": "/lanmu/4/page/{{page}}/",
+        "url2": "/lanmu/4/"
+      },
+      {
+        "name": "Netflix",
+        "url": "/lanmu/16/page/{{page}}/",
+        "url2": "/lanmu/16/"
+      },
+      {
+        "name": "短剧",
+        "url": "/lanmu/36/page/{{page}}/",
+        "url2": "/lanmu/36/"
+      },
+      {
+        "name": "AI漫剧",
+        "url": "/lanmu/37/page/{{page}}/",
+        "url2": "/lanmu/37/"
+      },
+      {
+        "name": "体育",
+        "url": "/lanmu/31/page/{{page}}/",
+        "url2": "/lanmu/31/"
+      },
+      {
+        "name": "热榜",
+        "url": "/label/hot/",
+        "url2": "/label/hot/"
+      }
+    ],
+    "list": {
+      "list": "a.module-poster-item, .module-item",
+      "name": "title||.module-poster-item-title@text||img@alt",
+      "tips": ".module-item-note@text",
+      "coverUrl": "img@data-original||img@data-src||img@src",
+      "detailUrl": "href"
+    },
+    "search": {
+      "url": "/vodsearch/{{key}}-------------/",
+      "list": "a.module-poster-item, .module-item",
+      "name": "title||.module-poster-item-title@text||img@alt",
+      "tips": ".module-item-note@text",
+      "coverUrl": "img@data-original||img@src",
+      "detailUrl": "href"
+    },
+    "detail": {
+      "meta": "h1@text||.module-info-introduction@html||.module-info-item@html||title@text"
+    },
+    "play": {
+      "list": "a.module-play-list-link, .module-play-list a",
+      "name": "span@text||text||title",
+      "url": "href"
+    },
+    "toc": {
+      "list": "a.module-play-list-link, .module-play-list a",
+      "name": "span@text||text||title",
+      "url": "href"
+    }
+  },
+  {
     "name": "📺骚火",
     "api": "https://saohuo.tv",
     "type": 2,
@@ -269,7 +505,6 @@
       "url": "data-hls-src||data-fallback-src||src||data-hls"
     }
   },
-
   {
     "name": "📺网飞猫",
     "api": "https://www.fjszjm.com",
@@ -373,7 +608,6 @@
       "url": "href"
     }
   },
-
   {
     "name": "奇优",
     "type": 2,
