@@ -1,5 +1,105 @@
 [
   {
+    "name": "🎨74P福利社",
+    "type": 12,
+    "api": "https://www.74p.net",
+    "header": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      "Referer": "https://www.74p.net/",
+      "Accept-Language": "zh-CN,zh;q=0.9"
+    },
+    "categories": [
+      {
+        "name": "漫画最新",
+        "url": "/comic?page={{page}}",
+        "url2": "/comic"
+      },
+      {
+        "name": "日本漫画",
+        "url": "/comic/category/jp/page/{{page}}",
+        "url2": "/comic/category/jp"
+      },
+      {
+        "name": "韩国漫画",
+        "url": "/comic/category/kr/page/{{page}}",
+        "url2": "/comic/category/kr"
+      },
+      {
+        "name": "全部标签",
+        "url": "/comic/tags"
+      },
+      {
+        "name": "写真最新",
+        "url": "/meitu?page={{page}}",
+        "url2": "/meitu"
+      },
+      {
+        "name": "秀人网",
+        "url": "/meitu/category/xiurenwang/page/{{page}}",
+        "url2": "/meitu/category/xiurenwang"
+      },
+      {
+        "name": "Cosplay",
+        "url": "/meitu/category/cosplay/page/{{page}}",
+        "url2": "/meitu/category/cosplay"
+      },
+      {
+        "name": "语画界",
+        "url": "/meitu/category/yuhuajie/page/{{page}}",
+        "url2": "/meitu/category/yuhuajie"
+      },
+      {
+        "name": "花漾",
+        "url": "/meitu/category/huayang/page/{{page}}",
+        "url2": "/meitu/category/huayang"
+      },
+      {
+        "name": "爱蜜社",
+        "url": "/meitu/category/aimishe/page/{{page}}",
+        "url2": "/meitu/category/aimishe"
+      },
+      {
+        "name": "波萝社",
+        "url": "/meitu/category/boluoshe/page/{{page}}",
+        "url2": "/meitu/category/boluoshe"
+      },
+      {
+        "name": "魅妍社",
+        "url": "/meitu/category/meiyanshe/page/{{page}}",
+        "url2": "/meitu/category/meiyanshe"
+      }
+    ],
+    "list": {
+      "list": "li.i_list, .update_area_lists li",
+      "name": "a.meta-title@text||img@alt||a.thumb-srcbox@title",
+      "coverUrl": "img@data-original||img@src",
+      "detailUrl": "a.thumb-srcbox@href||a.meta-title@href||a@href",
+      "tips": ".postlist-imagenum@text||.meta-post@text"
+    },
+    "search": {
+      "url": "/search/comic/?s={{key}}",
+      "list": "li.i_list, .update_area_lists li",
+      "name": "a.meta-title@text||img@alt",
+      "coverUrl": "img@data-original||img@src",
+      "detailUrl": "a.thumb-srcbox@href||a.meta-title@href||a@href"
+    },
+    "detail": {
+      "intro": ".jianjie@text||.content@text||h1@text",
+      "tips": ".meta-post@text"
+    },
+    "toc": {
+      "list": "section.zxjz li a, .zxjz a[href*='/comic/chapter/'], a[href*='/comic/chapter/']",
+      "name": "text",
+      "url": "href",
+      "reverse": false
+    },
+    "content": {
+      "content": ".content img@src||.content img@data-original||.page_imges img@src||.nav-links img@src||img[src*='uploads/comic']@src||img[data-original*='uploads/comic']@data-original"
+    },
+    "searchable": true,
+    "discoverable": true
+  },
+  {
     "name": "🎨老司机禁漫",
     "type": 12,
     "api": "https://www.laosijix.com",
@@ -347,207 +447,186 @@
     "discoverable": true
   },
   {
-    "name": "🎨包子漫画",
+    "name": "🎨风车漫画",
     "type": 12,
-    "api": "https://www.baozimh.com",
+    "api": "https://m.qyy158.com",
     "header": {
       "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
-      "Referer": "https://www.baozimh.com/",
-      "Accept-Language": "zh-CN,zh;q=0.9,zh-TW;q=0.8",
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+      "Referer": "https://m.qyy158.com/",
+      "Accept-Language": "zh-CN,zh;q=0.9"
     },
     "categories": [
       {
-        "name": "推荐",
-        "url": "/classify?type=all&region=all&state=all&filter=*&page={{page}}",
-        "url2": "/classify?type=all&region=all&state=all&filter=*"
+        "name": "全部漫画",
+        "url": "/sort/?page={{page}}",
+        "url2": "/sort/"
       },
       {
-        "name": "国漫",
-        "url": "/classify?type=all&region=cn&state=all&filter=*&page={{page}}",
-        "url2": "/classify?type=all&region=cn&state=all&filter=*"
+        "name": "大陆漫画",
+        "url": "/sort/?area=1&page={{page}}",
+        "url2": "/sort/?area=1"
       },
       {
-        "name": "日本",
-        "url": "/classify?type=all&region=jp&state=all&filter=*&page={{page}}",
-        "url2": "/classify?type=all&region=jp&state=all&filter=*"
+        "name": "日本漫画",
+        "url": "/sort/?area=2&page={{page}}",
+        "url2": "/sort/?area=2"
       },
       {
-        "name": "韩国",
-        "url": "/classify?type=all&region=kr&state=all&filter=*&page={{page}}",
-        "url2": "/classify?type=all&region=kr&state=all&filter=*"
+        "name": "韩国漫画",
+        "url": "/sort/?area=3&page={{page}}",
+        "url2": "/sort/?area=3"
       },
       {
-        "name": "欧美",
-        "url": "/classify?type=all&region=en&state=all&filter=*&page={{page}}",
-        "url2": "/classify?type=all&region=en&state=all&filter=*"
+        "name": "欧美漫画",
+        "url": "/sort/?area=4&page={{page}}",
+        "url2": "/sort/?area=4"
       },
       {
-        "name": "连载",
-        "url": "/classify?type=all&region=all&state=serial&filter=*&page={{page}}",
-        "url2": "/classify?type=all&region=all&state=serial&filter=*"
+        "name": "最新更新",
+        "url": "/"
       },
       {
-        "name": "完结",
-        "url": "/classify?type=all&region=all&state=pub&filter=*&page={{page}}",
-        "url2": "/classify?type=all&region=all&state=pub&filter=*"
-      },
-      {
-        "name": "恋爱",
-        "url": "/classify?type=lianai&region=all&state=all&filter=*&page={{page}}",
-        "url2": "/classify?type=lianai&region=all&state=all&filter=*"
-      },
-      {
-        "name": "古风",
-        "url": "/classify?type=gufeng&region=all&state=all&filter=*&page={{page}}",
-        "url2": "/classify?type=gufeng&region=all&state=all&filter=*"
-      },
-      {
-        "name": "玄幻",
-        "url": "/classify?type=xuanhuan&region=all&state=all&filter=*&page={{page}}",
-        "url2": "/classify?type=xuanhuan&region=all&state=all&filter=*"
-      },
-      {
-        "name": "穿越",
-        "url": "/classify?type=chuanyue&region=all&state=all&filter=*&page={{page}}",
-        "url2": "/classify?type=chuanyue&region=all&state=all&filter=*"
-      },
-      {
-        "name": "武侠",
-        "url": "/classify?type=wuxia&region=all&state=all&filter=*&page={{page}}",
-        "url2": "/classify?type=wuxia&region=all&state=all&filter=*"
+        "name": "排行榜",
+        "url": "/rank/"
       }
     ],
     "list": {
-      "list": "div.comics-card",
-      "name": "a@title||a@aria-label||amp-img@alt||img@alt",
-      "detailUrl": "a.comics-card__poster@href||a@href",
-      "coverUrl": "amp-img@src||img@src||amp-img@data-src",
-      "tips": ".comics-card__info@text||small@text"
+      "list": ".block-content li, .cartoon-block-box li, li",
+      "name": ".article-info a@text||.cart-info p@text||img@alt||a@text",
+      "coverUrl": "img@src||img@data-original||img@data-src",
+      "detailUrl": "a@href",
+      "tips": ".new-chapter@text||.article-info a:nth-child(3)@text||p@text"
     },
     "search": {
-      "url": "/search?q={{key}}",
-      "list": "div.comics-card",
-      "name": "a@title||a@aria-label||amp-img@alt||img@alt",
+      "url": "/search/?searchkey={{key}}",
+      "list": ".block-content li, .cartoon-block-box li, li",
+      "name": ".article-info a@text||.cart-info p@text||img@alt",
+      "coverUrl": "img@src||img@data-original",
       "detailUrl": "a@href",
-      "coverUrl": "amp-img@src||img@src"
+      "tips": ".new-chapter@text||.article-info p@text"
     },
     "detail": {
-      "intro": ".comics-detail__desc@text||.comics-detail__info@text||meta[name=description]@content"
+      "intro": ".article-desc@text||.comic-infos@text||h1@text",
+      "tips": ".comic-infos li@text||.article-info@text"
     },
     "toc": {
-      "list": "#chapter-items a, #chapters_other_list a, a.comics-chapters__item, .comics-chapters a",
-      "name": "span@text||text",
-      "url": "href"
+      "list": ".chapter-list li a, .chapter-list li, ul.chapter-list a",
+      "name": "text",
+      "url": "href||a@href",
+      "reverse": false
     },
     "content": {
-      "content": ".comic-contain amp-img@src||.comic-contain img@src||amp-img@src||img@src"
+      "content": "img@data-original||img@data-src||img@src||.comic-page img@data-original||.comic-page img@src"
     },
     "searchable": true,
     "discoverable": true
   },
   {
-    "name": "🎨动漫之家",
+    "name": "🎨漫客栈",
     "type": 12,
-    "api": "https://www.idmzj.com",
+    "api": "https://comic.mkzcdn.com",
     "header": {
-      "User-Agent": "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36",
-      "Referer": "https://www.idmzj.com/",
+      "User-Agent": "Mozilla/5.0 (Linux; Android 12; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36",
+      "Referer": "https://www.mkzhan.com/",
+      "Origin": "https://www.mkzhan.com",
       "Accept": "application/json, text/plain, */*",
       "Accept-Language": "zh-CN,zh;q=0.9"
     },
     "categories": [
       {
-        "name": "最近更新",
-        "url": "/api/v1/comic1/update_list?channel=pc&app_name=dmzj&version=1.0.0&page={{page}}&size=30"
+        "name": "热门人气",
+        "url": "/search/filter/?order=1&page_num={{page}}&page_size=24"
       },
       {
-        "name": "全部",
-        "url": "https://m.idmzj.com/classify/0-0-0-0-1-{{page}}.json"
+        "name": "更新时间",
+        "url": "/search/filter/?order=2&page_num={{page}}&page_size=24"
       },
       {
-        "name": "冒险",
-        "url": "https://m.idmzj.com/classify/1-0-0-0-1-{{page}}.json"
+        "name": "连载",
+        "url": "/search/filter/?finish=1&page_num={{page}}&page_size=24"
+      },
+      {
+        "name": "完结",
+        "url": "/search/filter/?finish=2&page_num={{page}}&page_size=24"
+      },
+      {
+        "name": "免费",
+        "url": "/search/filter/?is_free=1&page_num={{page}}&page_size=24"
+      },
+      {
+        "name": "霸总",
+        "url": "/search/filter/?theme_id=1&page_num={{page}}&page_size=24"
+      },
+      {
+        "name": "修真",
+        "url": "/search/filter/?theme_id=2&page_num={{page}}&page_size=24"
+      },
+      {
+        "name": "恋爱",
+        "url": "/search/filter/?theme_id=3&page_num={{page}}&page_size=24"
+      },
+      {
+        "name": "古风",
+        "url": "/search/filter/?theme_id=4&page_num={{page}}&page_size=24"
+      },
+      {
+        "name": "玄幻",
+        "url": "/search/filter/?theme_id=5&page_num={{page}}&page_size=24"
+      },
+      {
+        "name": "穿越",
+        "url": "/search/filter/?theme_id=6&page_num={{page}}&page_size=24"
+      },
+      {
+        "name": "都市",
+        "url": "/search/filter/?theme_id=7&page_num={{page}}&page_size=24"
       },
       {
         "name": "搞笑",
-        "url": "https://m.idmzj.com/classify/2-0-0-0-1-{{page}}.json"
+        "url": "/search/filter/?theme_id=8&page_num={{page}}&page_size=24"
       },
       {
-        "name": "格斗",
-        "url": "https://m.idmzj.com/classify/3-0-0-0-1-{{page}}.json"
+        "name": "冒险",
+        "url": "/search/filter/?theme_id=12&page_num={{page}}&page_size=24"
       },
       {
         "name": "科幻",
-        "url": "https://m.idmzj.com/classify/4-0-0-0-1-{{page}}.json"
-      },
-      {
-        "name": "爱情",
-        "url": "https://m.idmzj.com/classify/5-0-0-0-1-{{page}}.json"
-      },
-      {
-        "name": "侦探",
-        "url": "https://m.idmzj.com/classify/6-0-0-0-1-{{page}}.json"
-      },
-      {
-        "name": "竞技",
-        "url": "https://m.idmzj.com/classify/7-0-0-0-1-{{page}}.json"
-      },
-      {
-        "name": "魔法",
-        "url": "https://m.idmzj.com/classify/8-0-0-0-1-{{page}}.json"
-      },
-      {
-        "name": "校园",
-        "url": "https://m.idmzj.com/classify/9-0-0-0-1-{{page}}.json"
-      },
-      {
-        "name": "百合",
-        "url": "https://m.idmzj.com/classify/11-0-0-0-1-{{page}}.json"
-      },
-      {
-        "name": "耽美",
-        "url": "https://m.idmzj.com/classify/13-0-0-0-1-{{page}}.json"
-      },
-      {
-        "name": "治愈",
-        "url": "https://m.idmzj.com/classify/17-0-0-0-1-{{page}}.json"
-      },
-      {
-        "name": "奇幻",
-        "url": "https://m.idmzj.com/classify/22-0-0-0-1-{{page}}.json"
+        "url": "/search/filter/?theme_id=19&page_num={{page}}&page_size=24"
       }
     ],
     "list": {
-      "list": "$.data.list[*]||$[*]",
-      "name": "$.title||$.name",
-      "author": "$.authors||$.author",
-      "detailUrl": "https://www.idmzj.com/api/v1/comic1/comic/detail?channel=pc&app_name=dmzj&version=1.0.0&comic_py={{$.comic_py}}",
+      "list": "$.data.list[*]",
+      "name": "$.title",
+      "author": "$.author_title",
       "coverUrl": "$.cover",
-      "tips": "$.last_update_chapter_name||$.lastUpdateChapterName||$.status",
-      "params": "{\"comic_id\":{{$.id}},\"comic_py\":\"{{$.comic_py}}\"}"
+      "detailUrl": "https://comic.mkzcdn.com/comic/info/?comic_id={{$.comic_id}}",
+      "tips": "$.chapter_title||$.feature",
+      "params": "{\"comic_id\":\"{{$.comic_id}}\"}"
     },
     "search": {
-      "url": "/api/v1/comic1/search?keyword={{key}}&page=0",
-      "list": "$.data.list[*]||$.data[*]||$[*]",
-      "name": "$.title||$.name",
-      "author": "$.authors",
-      "detailUrl": "https://www.idmzj.com/api/v1/comic1/comic/detail?channel=pc&app_name=dmzj&version=1.0.0&comic_py={{$.comic_py}}",
+      "url": "/search/keyword/?keyword={{key}}&page_num=1&page_size=24",
+      "list": "$.data.list[*]",
+      "name": "$.title",
+      "author": "$.author_title",
       "coverUrl": "$.cover",
-      "tips": "$.last_update_chapter_name||$.status",
-      "params": "{\"comic_id\":{{$.id}},\"comic_py\":\"{{$.comic_py}}\"}"
+      "detailUrl": "https://comic.mkzcdn.com/comic/info/?comic_id={{$.comic_id}}",
+      "tips": "$.chapter_title",
+      "params": "{\"comic_id\":\"{{$.comic_id}}\"}"
     },
     "detail": {
-      "intro": "$.data.comicInfo.description||$.data.description"
+      "intro": "$.data.content||$.data.feature||$.data.notice",
+      "tips": "$.data.chapter_title||$.data.author_title",
+      "tocUrl": "https://comic.mkzcdn.com/chapter/v1/?comic_id={{comic_id}}"
     },
     "toc": {
-      "list": "$.data.comicInfo.chapterList[*].data[*]||$.data.chapter_list[*]",
-      "name": "$.chapter_title||$.chapter_name||$.title",
-      "reverse": true,
-      "url": "https://www.idmzj.com/api/v1/comic1/chapter/detail?channel=pc&app_name=dmzj&version=1.0.0&comic_id={{$.comic_id}}&chapter_id={{$.chapter_id}}"
+      "list": "$.data[*]",
+      "name": "$.title",
+      "url": "https://comic.mkzcdn.com/chapter/content/?chapter_id={{$.chapter_id}}&comic_id={{comic_id}}",
+      "reverse": false,
+      "params": "{\"chapter_id\":\"{{$.chapter_id}}\",\"comic_id\":\"{{comic_id}}\"}"
     },
     "content": {
-      "content": "$.data.chapterInfo.page_url[*]||$.data.chapterInfo.page_url_hd[*]||$.page_url[*]"
+      "content": "$.data[*].image||$.data.page[*].image"
     },
     "searchable": true,
     "discoverable": true

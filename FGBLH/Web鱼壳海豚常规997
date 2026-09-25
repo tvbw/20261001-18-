@@ -142,6 +142,60 @@
             "type": 3,
             "api": "https://ghfast.top/https://raw.githubusercontent.com/phu889/kjh998/refs/heads/main/py/ASMR吧.py"
         },
+         {
+        	"key": "飞牛影视",
+            "name": "🐬飞牛影视(关梯)[追剧]",
+            "type": 3,
+            "api": "https://ghfast.top/https://raw.githubusercontent.com/phu889/kjh998/refs/heads/main/py/飞牛影视.py"
+		},
+        {
+        	"key": "追剧达人",
+            "name": "🐬追剧达人[追剧]",
+            "type": 3,
+            "api": "https://ghfast.top/https://raw.githubusercontent.com/phu889/kjh998/refs/heads/main/py/追剧达人.py"
+		},
+        {
+        	"key": "未来影院",
+            "name": "🐬未来影院(关梯)[追剧]",
+            "type": 3,
+            "api": "https://ghfast.top/https://raw.githubusercontent.com/phu889/kjh998/refs/heads/main/py/未来影院(关梯).py"
+		},
+        {
+        	"key": "大白鲨影院",
+            "name": "🐬大白鲨影院[追剧]",
+            "type": 3,
+            "api": "https://ghfast.top/https://raw.githubusercontent.com/phu889/kjh998/refs/heads/main/py/大白鲨影院.py"
+		},
+        {
+        	"key": "咸鱼影视",
+            "name": "🐬咸鱼影视[追剧]",
+            "type": 3,
+            "api": "https://ghfast.top/https://raw.githubusercontent.com/phu889/kjh998/refs/heads/main/py/咸鱼影视.py"
+		},
+        {
+        	"key": "1234影视",
+            "name": "🐬1234影视[追剧]",
+            "type": 3,
+            "api": "https://ghfast.top/https://raw.githubusercontent.com/phu889/kjh998/refs/heads/main/py/1234影视.py"
+		},
+        {
+        	"key": "LIBVIO",
+            "name": "🐬LIBVIO[追剧]",
+            "type": 3,
+            "api": "https://ghfast.top/https://raw.githubusercontent.com/phu889/kjh998/refs/heads/main/py/LIBVIO.py"
+		},
+        {
+        	"key": "咕噜咕噜",
+            "name": "🐬咕噜咕噜[追剧]",
+            "type": 3,
+            "api": "https://ghfast.top/https://raw.githubusercontent.com/phu889/kjh998/refs/heads/main/py/咕噜咕噜.py"
+		},
+        {
+        	"key": "ik4k影院",
+            "name": "🐬ik4k影院(关梯)[追剧]",
+            "type": 3,
+            "api": "https://ghfast.top/https://raw.githubusercontent.com/phu889/kjh998/refs/heads/main/py/ik4k影院.py"
+		},
         {
         	"key": "魔法影视",
             "name": "🐬魔法影视[追剧]",
@@ -1131,6 +1185,18 @@
       ]
     },
 		{
+			"key": "红豆短剧",
+			"name": "🐬红豆短剧.py[短剧]",
+			"type": 3,
+			"api": "https://ghfast.top/https://raw.githubusercontent.com/phu889/kjh998/refs/heads/main/py/红豆短剧.py"
+		},
+        {
+			"key": "映刻短剧",
+			"name": "🐬映刻短剧.py[短剧]",
+			"type": 3,
+			"api": "https://ghfast.top/https://raw.githubusercontent.com/phu889/kjh998/refs/heads/main/py/映刻短剧.py"
+		},
+        {
 			"key": "悟圣短剧",
 			"name": "🐬悟圣短剧.py[短剧]",
 			"type": 3,
@@ -1303,13 +1369,6 @@
             "ua": "okhttp/5.3.2",
             "url": "https://gh-proxy.org/https://raw.githubusercontent.com/807080747/zv/refs/heads/main/sese.txt"
         }, 
-	     {
-            "name": "🐬电视家",
-            "type": 0,
-            "playerType": 2,
-             "ua": "okhttp",
-			 "url": "https://gh-proxy.org/https://github.com/bang359/dsj/raw/main/dsjcs.txt"
-         },
          {
             "name": "🐬地方直播",
             "type": 0,

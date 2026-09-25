@@ -1,0 +1,162 @@
+{
+    "spider": "",
+    "sites": [
+        {
+            "key": "影探",
+            "name": "影探影视",
+            "type": 3,
+            "searchable": 1,
+            "quickSearch": 1,
+            "filterable": 1,
+            "changeable": 1,
+            "api": "https://fastlink.cokey.xyz/f/PkWZt1/%E5%BD%B1%E6%8E%A2.py"
+        },
+        {
+            "key": "腾讯视频",
+            "name": "腾讯视频",
+            "type": 3,
+            "searchable": 1,
+            "quickSearch": 1,
+            "filterable": 1,
+            "changeable": 1,
+            "api": "https://fastlink.cokey.xyz/f/G5M9uE/drpy2.min.js",
+            "ext": "https://fastlink.cokey.xyz/f/Nk8XS4/腾讯视频.js"
+        },
+        {
+            "key": "芒果视频",
+            "name": "芒果视频",
+            "type": 3,
+            "api": "https://fastlink.cokey.xyz/f/G5M9uE/drpy2.min.js",
+            "ext": "https://fastlink.cokey.xyz/f/319Xh0/芒果视频.js"
+        },
+        {
+            "key": "哔哩哔哩",
+            "name": "哔哩哔哩",
+            "type": 3,
+            "api": "https://fastlink.cokey.xyz/f/2b23C5/哔哩哔哩.py"
+        },
+        {
+            "key": "移动",
+            "name": "移动云盘",
+            "type": 3,
+            "jar": "https://fastlink.cokey.xyz/f/NkrLt4/移动.jar",
+            "api": "csp_YiDong",
+            "searchable": 1,
+            "quickSearch": 1,
+            "filterable": 1
+        },
+        {
+            "key": "优酷视频",
+            "name": "优酷视频",
+            "type": 3,
+            "api": "https://fastlink.cokey.xyz/f/G5M9uE/drpy2.min.js",
+            "ext": "https://fastlink.cokey.xyz/f/0rWaIj/优酷视频.js"
+        },
+        {
+            "key": "爱奇艺",
+            "name": "爱奇奇艺",
+            "type": 3,
+            "api": "https://fastlink.cokey.xyz/f/G5M9uE/drpy2.min.js",
+            "ext": "https://fastlink.cokey.xyz/f/KBkQtW/爱奇异视频.js"
+        },
+        {
+            "key": "设置",
+            "name": "网盘设置",
+            "type": 3,
+            "jar": "https://fastlink.cokey.xyz/f/K3ZEiW/网盘.jar",
+            "api": "csp_Config",
+            "searchable": 0,
+            "changeable": 0,
+            "indexs": 0,
+            "style": {
+                "type": "rect",
+                "ratio": 1.618
+            }
+        },
+        {
+            "key": "玩偶哥哥",
+            "name": "玩偶网盘",
+            "type": 3,
+            "jar": "https://fastlink.cokey.xyz/f/K3ZEiW/网盘.jar",
+            "playerType": 2,
+            "api": "csp_Wogg",
+            "ext": {
+                "cookie": "https://fastlink.cokey.xyz/f/QrAmFo/污鸭坐飞鸡.txt",
+                "site": "https://wogg.xxooo.cf/"
+            }
+        },
+        {
+            "key": "P123",
+            "name": "木偶网盘",
+            "type": 3,
+            "jar": "https://fastlink.cokey.xyz/f/K3ZEiW/网盘.jar",
+            "playerType": 2,
+            "api": "csp_Mogg",
+            "ext": {
+                "cookie": "https://fastlink.cokey.xyz/f/QrAmFo/污鸭坐飞鸡.txt",
+                "site": "http://123.666291.xyz/"
+            }
+        },
+        {
+            "key": "至臻",
+            "name": "至臻网盘",
+            "type": 3,
+            "jar": "https://fastlink.cokey.xyz/f/K3ZEiW/网盘.jar",
+            "playerType": 2,
+            "api": "csp_Mogg",
+            "ext": {
+                "cookie": "https://fastlink.cokey.xyz/f/QrAmFo/污鸭坐飞鸡.txt",
+                "site": "https://mihdr.top/"
+            }
+        },
+        {
+            "key": "多多",
+            "name": "多多网盘",
+            "type": 3,
+            "jar": "https://fastlink.cokey.xyz/f/K3ZEiW/网盘.jar",
+            "playerType": 2,
+            "api": "csp_Mogg",
+            "ext": {
+                "cookie": "https://fastlink.cokey.xyz/f/QrAmFo/污鸭坐飞鸡.txt",
+                "site": "https://tv.yydsys.top/"
+            }
+        },
+        {
+            "key": "六速",
+            "name": "六速社区",
+            "type": 3,
+            "api": "https://fastlink.cokey.xyz/f/0QM7Hj/六速社区.py",
+            "searchable": 1,
+            "quickSearch": 1,
+            "filterable": 1
+        }
+    ],
+    "parses": [
+        {
+            "name": "4K",
+            "type": 1,
+            "url": "https://niubi.69mini.com/api/?key=de8570d02b2e5181978a6c47a8eb4d91&url=",
+            "ext": {
+                "flag": [
+                    "qq",
+                    "腾讯",
+                    "qiyi",
+                    "爱奇艺",
+                    "奇艺",
+                    "youku",
+                    "优酷",
+                    "sohu",
+                    "搜狐",
+                    "letv",
+                    "乐视",
+                    "mgtv",
+                    "芒果",
+                    "tnmb",
+                    "seven",
+                    "bilibili",
+                    "1905"
+                ]
+            }
+        }
+    ]
+}

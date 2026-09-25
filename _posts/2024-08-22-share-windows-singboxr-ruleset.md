@@ -76,7 +76,7 @@ tags: [sing-box, sing-boxr, Windows, ruleset, rule_set, 分享]
       { "rule_set": [ "private" ], "server": "dns_local" },
       { "rule_set": [ "ads" ], "action": "predefined" },
       { "rule_set": [ "microsoft-cn", "apple-cn", "google-cn", "games-cn" ], "server": "dns_direct" },
-      { "rule_set": [ "games", "ai", "proxy" ], "query_type": [ "A", "AAAA" ], "server": "dns_fakeip" },
+      { "rule_set": [ "networktest", "games", "ai", "proxy" ], "query_type": [ "A", "AAAA" ], "server": "dns_fakeip" },
       { "rule_set": [ "cn" ], "server": "dns_direct" },
       { "action": "evaluate", "server": "dns_direct" },
       { "match_response": true, "rule_set": [ "cnip" ], "action": "respond" }
@@ -224,7 +224,7 @@ tags: [sing-box, sing-boxr, Windows, ruleset, rule_set, 分享]
       { "rule_set": [ "private" ], "server": "dns_local" },
       { "rule_set": [ "ads" ], "action": "predefined" },
       { "rule_set": [ "microsoft-cn", "apple-cn", "google-cn", "games-cn" ], "server": "dns_direct" },
-      { "rule_set": [ "games", "ai", "proxy" ], "query_type": [ "A", "AAAA" ], "server": "dns_fakeip" },
+      { "rule_set": [ "networktest", "games", "ai", "proxy" ], "query_type": [ "A", "AAAA" ], "server": "dns_fakeip" },
       { "rule_set": [ "cn" ], "server": "dns_direct" },
       // 推荐将 `client_subnet` 设置为当前宽带运营商分配的默认 DNS 的 IP 段
       { "action": "evaluate", "server": "dns_proxy", "client_subnet": "211.137.58.0/24" },

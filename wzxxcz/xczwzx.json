@@ -392,6 +392,14 @@
                 "ratio": 1.618
             }
         },
+		{
+            "key": "央视网页",
+            "name": "🍊小橙子央卫直播",
+            "type": 3,
+            "jar": "https://ghfast.top/https://raw.githubusercontent.com/wzxxcz/wzxxcz/maing/jars/WvSpider.jar",
+            "api": "csp_WvSpider",
+            "ext": "https://ghfast.top/https://raw.githubusercontent.com/wzxxcz/wzxxcz/maing/js/%E5%A4%AE%E8%A7%86%E7%9B%B4%E6%92%AD.js"
+        },
         {
             "key": "hipy_js_好趣网",
             "name": "🍊小橙子电视",
@@ -1489,6 +1497,42 @@
             "quickSearch": 1,
             "filterable": 1,
             "playerType": 2
+        },
+		{
+            "key": "追剧达人",
+            "name": "🍊追剧达人",
+            "type": 3,
+            "api": "./py/追剧达人.py"
+        },
+		{
+            "key": "未来影院",
+            "name": "🍊未来影院",
+            "type": 3,
+            "api": "./py/未来影院(关梯).py"
+        },
+		{
+            "key": "大白鲨影院",
+            "name": "🦈大白鲨影院",
+            "type": 3,
+            "api": "./py/大白鲨影院.py"
+        },
+		{
+            "key": "咸鱼影视",
+            "name": "🐠咸鱼影视",
+            "type": 3,
+            "api": "./py/咸鱼影视.py"
+        },
+		{
+            "key": "LIBVIO",
+            "name": "🍊LIBVIO影视",
+            "type": 3,
+            "api": "./py/LIBVIO.py"
+        },
+		{
+            "key": "咕噜咕噜",
+            "name": "🍊咕噜咕噜",
+            "type": 3,
+            "api": "./py/咕噜咕噜.py"
         },
 		{
             "key": "爬虫影视",

@@ -193,7 +193,7 @@ curl -fo "${CRASHDIR}/cn_ipv6.txt" -L https://cdn.jsdelivr.net/gh/DustinWin/geoi
       { "clash_mode": [ "Global" ], "server": "dns_proxy" },
       { "rule_set": [ "private" ], "server": "dns_resolver" },
       { "rule_set": [ "fakeip-filter-lite", "microsoft-cn", "apple-cn", "google-cn", "games-cn" ], "server": "dns_direct" },
-      { "rule_set": [ "games", "ai", "proxy" ], "query_type": [ "A", "AAAA" ], "server": "dns_fakeip" },
+      { "rule_set": [ "networktest", "games", "ai", "proxy" ], "query_type": [ "A", "AAAA" ], "server": "dns_fakeip" },
       { "rule_set": [ "cn" ], "server": "dns_direct" },
       { "action": "evaluate", "server": "dns_direct" },
       { "match_response": true, "rule_set": [ "cnip" ], "action": "respond" }
@@ -243,7 +243,7 @@ curl -fo "${CRASHDIR}/cn_ipv6.txt" -L https://cdn.jsdelivr.net/gh/DustinWin/geoi
       { "clash_mode": [ "Global" ], "server": "dns_proxy" },
       { "rule_set": [ "private" ], "server": "dns_resolver" },
       { "rule_set": [ "fakeip-filter-lite", "microsoft-cn", "apple-cn", "google-cn", "games-cn" ], "server": "dns_direct" },
-      { "rule_set": [ "games", "ai", "proxy" ], "query_type": [ "A", "AAAA" ], "server": "dns_fakeip" },
+      { "rule_set": [ "networktest", "games", "ai", "proxy" ], "query_type": [ "A", "AAAA" ], "server": "dns_fakeip" },
       { "rule_set": [ "cn" ], "server": "dns_direct" },
       // 推荐将 `client_subnet` 设置为当前宽带运营商分配的默认 DNS 的 IP 段
       { "action": "evaluate", "server": "dns_proxy", "client_subnet": "211.137.58.0/24" },

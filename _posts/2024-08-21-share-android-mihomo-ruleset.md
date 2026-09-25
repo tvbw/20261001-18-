@@ -57,7 +57,7 @@ sniffer:
 tun:
   enable: true
   stack: mips
-  dns-hijack: [any:53]
+  dns-hijack: [any:53, tcp://any:53]
   auto-route: true
   auto-detect-interface: true
   device: mihomo
@@ -82,6 +82,7 @@ dns:
     - RULE-SET,apple-cn,real-ip
     - RULE-SET,google-cn,real-ip
     - RULE-SET,games-cn,real-ip
+    - RULE-SET,networktest,fake-ip
     - RULE-SET,games,fake-ip
     - RULE-SET,ai,fake-ip
     - RULE-SET,proxy,fake-ip
@@ -307,6 +308,7 @@ dns:
     - RULE-SET,apple-cn,real-ip
     - RULE-SET,google-cn,real-ip
     - RULE-SET,games-cn,real-ip
+    - RULE-SET,networktest,fake-ip
     - RULE-SET,games,fake-ip
     - RULE-SET,ai,fake-ip
     - RULE-SET,proxy,fake-ip

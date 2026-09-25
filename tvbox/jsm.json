@@ -171,7 +171,10 @@
 		{"key":"FourKZN","name":"4K指南|网盘|磁力","type":3,"api":"csp_FourKZN","quickSearch":1, "changeable":1, "filterable":1, "timeout":60, "ext":"./lib/tokenm.json$$$https://4kzn.cc/$$$noproxy$$$1$$$./lib/4kzn.txt$$$4KZN"},
 		{"key":"校长影视","name":"校长影视|网盘","type":3,"api":"csp_XiaoZhang", "quickSearch":1, "changeable":1, "filterable":1, "timeout":60,"ext":"./lib/tokenm.json$$$https://xzyshd.com$$$proxy$$$1"},
 		{"key":"Wogg","name":"玩偶哥哥|网盘","type":3,"api":"csp_Wogg","quickSearch":1, "changeable":1, "filterable":1, "timeout":60, "ext":"./lib/tokenm.json$$$http://wogg.888484.xyz/$$$noproxy$$$1$$$./lib/wogg.json$$$WOGG"},
+		{"key":"Hjzc","name":"花卷|网盘","type":3,"api":"csp_Hjzc","quickSearch":1, "changeable":1, "filterable":1, "timeout":60, "ext":"./lib/tokenm.json$$$https://www.hjzhencai.top$$$noproxy$$$1$$$./lib/wogg.json$$$HJZC"},
+		{"key":"Mipan","name":"觅盘|网盘搜索","type":3,"api":"csp_Mipan","quickSearch":1, "changeable":1, "filterable":1, "timeout":60, "ext":"./lib/tokenm.json"},
 		{"key":"Hdhive","name":"影巢|网盘|磁力","type":3,"api":"csp_Hdh","quickSearch":1, "changeable":1, "filterable":1, "timeout":120, "ext":"./lib/tokenm.json$$$https://re0.me$$$proxy$$$1$$$./lib/hdhive.txt$$$HDHIVE$$$USER$$$PASS"},
+		{"key":"HDHaven","name":"栖影|网盘|磁力","type":3,"api":"csp_HDHaven","quickSearch":1, "changeable":1, "filterable":1, "timeout":120, "ext":"./lib/tokenm.json$$$https://hdhaven.com$$$proxy$$$1$$$./lib/hdhaven.txt$$$hdhaven$$$USER$$$PASS"},
 		{"key":"蜡笔网盘","name":"蜡笔|网盘","type":3,"api":"csp_Wobg","quickSearch":1, "changeable":1, "filterable":1, "timeout":60, "ext":"./lib/tokenm.json$$$https://xiaocgege.shop/$$$proxy$$$1$$$./lib/wogg.json$$$LABI"},
 		{
 			"key": "至臻|网盘",
@@ -334,7 +337,7 @@
 			"searchable": 1,
 			"changeable": 1,
 			"timeout": 60,
-			"ext": "./lib/tokenm.json$$$https://www.66ss.org$$$null$$$1"
+			"ext": "./lib/tokenm.json$$$https://www.xb6v.com$$$null$$$1"
 		},
 		{
 			"key": "索尼资源",

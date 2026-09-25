@@ -3,8 +3,11 @@
  */
 
 const baseUrl = 'https://www.x8kb9k8.com';
+const API_BASE = baseUrl + '/api/mw-movie';
+const API_SIGN_KEY = 'cb808529bae6b6be45ecfab29a4889bc';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36';
 const HEADERS = { 'User-Agent': UA, 'Referer': baseUrl + '/', 'Accept': 'text/html' };
+const API_HEADERS = { 'User-Agent': UA, 'Referer': baseUrl + '/', 'Accept': 'application/json' };
 const PLAY_HEADERS = { 'User-Agent': UA, 'Referer': baseUrl + '/', 'Origin': baseUrl };
 
 async function init(cfg) { return {}; }
@@ -19,6 +22,75 @@ function isVideo(url) {
 async function action(v) { return JSON.stringify({ msg: 'ok' }); }
 function output(v) { return JSON.stringify(v); }
 function str(v) { return v == null ? '' : String(v); }
+function deviceId() { return 'jinpai-web-' + str(stableUuid()); }
+function stableUuid() { return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) { var r = Math.random() * 16 | 0; var v = c === 'x' ? r : (r & 0x3 | 0x8); return v.toString(16); }); }
+function stableQuery(params) { return Object.keys(params).sort().map(function (k) { return k + '=' + str(params[k]); }).join('&'); }
+function md5Text(value) { return md5X(value); }
+function rotateLeft(value, amount) { return (value << amount) | (value >>> (32 - amount)); }
+function sha1Text(value) {
+  const source = str(value);
+  const bytes = [];
+  for (let index = 0; index < source.length; index++) {
+    let code = source.charCodeAt(index);
+    if (code >= 0xd800 && code <= 0xdbff && index + 1 < source.length) {
+      const next = source.charCodeAt(index + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) {
+        code = 0x10000 + ((code - 0xd800) << 10) + (next - 0xdc00);
+        index++;
+      }
+    }
+    if (code < 0x80) bytes.push(code);
+    else if (code < 0x800) bytes.push(0xc0 | (code >> 6), 0x80 | (code & 0x3f));
+    else if (code < 0x10000) bytes.push(0xe0 | (code >> 12), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f));
+    else bytes.push(0xf0 | (code >> 18), 0x80 | ((code >> 12) & 0x3f), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f));
+  }
+  const bitLength = bytes.length * 8;
+  bytes.push(128);
+  while (bytes.length % 64 !== 56) bytes.push(0);
+  const high = Math.floor(bitLength / 0x100000000);
+  const low = bitLength >>> 0;
+  bytes.push((high >>> 24) & 255, (high >>> 16) & 255, (high >>> 8) & 255, high & 255);
+  bytes.push((low >>> 24) & 255, (low >>> 16) & 255, (low >>> 8) & 255, low & 255);
+  let h0 = 0x67452301;
+  let h1 = 0xefcdab89;
+  let h2 = 0x98badcfe;
+  let h3 = 0x10325476;
+  let h4 = 0xc3d2e1f0;
+  for (let offset = 0; offset < bytes.length; offset += 64) {
+    const words = [];
+    for (let index = 0; index < 16; index++) {
+      const position = offset + index * 4;
+      words[index] = ((bytes[position] << 24) | (bytes[position + 1] << 16) | (bytes[position + 2] << 8) | bytes[position + 3]) >>> 0;
+    }
+    for (let index = 16; index < 80; index++) words[index] = rotateLeft(words[index - 3] ^ words[index - 8] ^ words[index - 14] ^ words[index - 16], 1);
+    let a = h0, b = h1, c = h2, d = h3, e = h4;
+    for (let index = 0; index < 80; index++) {
+      let f, k;
+      if (index < 20) { f = (b & c) | (~b & d); k = 0x5a827999; }
+      else if (index < 40) { f = b ^ c ^ d; k = 0x6ed9eba1; }
+      else if (index < 60) { f = (b & c) | (b & d) | (c & d); k = 0x8f1bbcdc; }
+      else { f = b ^ c ^ d; k = 0xca62c1d6; }
+      const next = (rotateLeft(a, 5) + (f >>> 0) + e + k + words[index]) >>> 0;
+      e = d;
+      d = c;
+      c = rotateLeft(b, 30);
+      b = a;
+      a = next;
+    }
+    h0 = (h0 + a) >>> 0;
+    h1 = (h1 + b) >>> 0;
+    h2 = (h2 + c) >>> 0;
+    h3 = (h3 + d) >>> 0;
+    h4 = (h4 + e) >>> 0;
+  }
+  return [h0, h1, h2, h3, h4].map(function (value) { return value.toString(16).padStart(8, '0'); }).join('');
+}
+function signApi(url, params, referer) {
+  var query = stableQuery(params);
+  var t = Date.now().toString();
+  var source = query + (query ? '&' : '') + 'key=' + API_SIGN_KEY + '&t=' + t;
+  return { url: url + (query ? '?' + query : ''), headers: { 'User-Agent': UA, Accept: 'application/json', Referer: referer || baseUrl + '/', 'client-type': '1', sign: sha1Text(md5Text(source)), t: t, deviceId: deviceId() } };
+}
 function stripTags(s) { return str(s).replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim(); }
 
 function parseRespText(resp) {
@@ -29,6 +101,64 @@ function parseRespText(resp) {
     if (typeof resp.data === 'string') return resp.data;
   }
   return str(resp);
+}
+async function apiGet(path, params, referer) {
+  const signed = signApi(API_BASE + path, params || {}, referer);
+  const response = await req(signed.url, { headers: signed.headers });
+  const text = parseRespText(response);
+  const data = JSON.parse(text);
+  if (Number(data.code) !== 200) throw new Error(str(data.msg || 'API request failed'));
+  return data.data || {};
+}
+function mapApiList(list) {
+  const result = [];
+  for (const item of list || []) { const mapped = mapVodItem(item); if (mapped) result.push(mapped); }
+  return result;
+}
+async function apiCategory(tid, pg, extend) {
+  const params = { clientType: 1, pageNum: parseInt(pg, 10) || 1, pageSize: 48, type1: str(tid || '1') };
+  const selected = extend || {};
+  const type = str(selected.type || '').trim();
+  const cls = str(selected.class || '').trim();
+  const area = str(selected.area || '').trim();
+  const year = str(selected.year || '').trim();
+  const lang = str(selected.lang || '').trim();
+  if (type) params.type = type;
+  if (cls) params.v_class = cls;
+  if (area) params.area = area;
+  if (year) params.year = year;
+  if (lang) params.lang = lang;
+  const data = await apiGet('/anonymous/video/list', params);
+  const list = mapApiList(data.list);
+  return { list: list, page: Number(data.pageNum) || params.pageNum, pagecount: Number(data.totalPage) || 1, limit: Number(data.pageSize) || 48, total: Number(data.totalCount) || list.length };
+}
+async function apiDetail(vid) {
+  const data = await apiGet('/anonymous/video/detail', { id: str(vid) });
+  const episodes = Array.isArray(data.episodeList) ? data.episodeList : [];
+  const list = episodes.map(function (episode) {
+    const name = str(episode.name || '正片').replace(/\$/g, '＄').replace(/#/g, '＃');
+    return name + '$' + str(vid) + '_' + str(episode.nid || '');
+  }).join('#');
+  return {
+    vod_id: str(vid),
+    vod_name: str(data.vodName || ''),
+    vod_pic: str(data.vodPic || ''),
+    vod_actor: str(data.vodActor || ''),
+    vod_director: str(data.vodDirector || ''),
+    vod_content: stripTags(data.vodContent || data.vodBlurb || ''),
+    vod_area: str(data.vodArea || ''),
+    vod_lang: str(data.vodLang || ''),
+    vod_year: str(data.vodYear || data.vodPubdate || '').slice(0, 4),
+    type_name: str(data.typeName || data.vodClass || ''),
+    vod_remarks: str(data.vodRemarks || data.vodVersion || ''),
+    vod_play_from: list ? '金牌影院' : '',
+    vod_play_url: list
+  };
+}
+async function apiSearch(key, page) {
+  const data = await apiGet('/anonymous/video/searchByWordPageable', { keyword: str(key), pageNum: parseInt(page, 10) || 1, pageSize: 48, sourceCode: '', type: '' });
+  const list = mapApiList(data.list);
+  return { list: list, page: Number(data.pageNum) || parseInt(page, 10) || 1, pagecount: Number(data.totalPage) || 1, limit: Number(data.pageSize) || 48, total: Number(data.totalCount) || list.length };
 }
 async function httpGet(url) {
   const r = await req(url, { headers: HEADERS });
@@ -195,7 +325,13 @@ async function homeVod() {
     }
     if (!list.length) list = parseCardsFallback(html);
     return output({ list: list.slice(0, 24) });
-  } catch (e) { return output({ list: [] }); }
+  } catch (e) {
+    return output({ list: await apiHomeList() });
+  }
+}
+async function apiHomeList() {
+  const data = await apiGet('/anonymous/v1/movie/recommend', { clientType: 1, modulesType: '1', pageNum: 1 });
+  return mapApiList(data.list);
 }
 
 function buildCategoryUrl(tid, pg, extend) {
@@ -217,22 +353,23 @@ function buildCategoryUrl(tid, pg, extend) {
 }
 
 async function category(tid, pg, filter, extend) {
-  extend = extend || {};
-  const built = buildCategoryUrl(tid, pg, extend);
-  const page = built.page;
+  const page = parseInt(pg, 10) || 1;
   try {
+    const data = await apiCategory(tid, page, extend);
+    return output(data);
+  } catch (e) {
+    const built = buildCategoryUrl(tid, page, extend);
     const html = await httpGet(built.url);
     const ft = flightText(html);
     const vd = extractJsonByKey(ft, 'videoList');
-    const data = vd && vd.data ? vd.data : vd;
-    if (data && Array.isArray(data.list) && data.list.length) {
-      const list = [];
-      for (const it of data.list) { const m = mapVodItem(it); if (m) list.push(m); }
-      return output({ list: list, page: Number(data.pageNum) || page, pagecount: Number(data.totalPage) || 1, limit: Number(data.pageSize) || 48, total: Number(data.totalCount) || list.length });
+    const source = vd && vd.data ? vd.data : vd;
+    if (source && Array.isArray(source.list) && source.list.length) {
+      const list = mapApiList(source.list);
+      return output({ list: list, page: Number(source.pageNum) || page, pagecount: Number(source.totalPage) || 1, limit: Number(source.pageSize) || 48, total: Number(source.totalCount) || list.length });
     }
-    const fb = parseCardsFallback(html);
-    return output({ list: fb, page: page, pagecount: fb.length ? page + 1 : 1, limit: 48, total: fb.length ? 9999 : 0 });
-  } catch (e) { return output({ list: [], page: page, pagecount: 1, limit: 48, total: 0 }); }
+    const list = parseCardsFallback(html);
+    return output({ list: list, page: page, pagecount: list.length ? page + 1 : 1, limit: 48, total: list.length ? 9999 : 0 });
+  }
 }
 
 function detailId(v) { const m = /(\d{4,})/.exec(str(v)); return m ? m[1] : str(v).trim(); }
@@ -240,105 +377,75 @@ function detailId(v) { const m = /(\d{4,})/.exec(str(v)); return m ? m[1] : str(
 async function detail(id) {
   const vid = detailId(id);
   try {
+    const vod = await apiDetail(vid);
+    if (!vod.vod_name && !vod.vod_play_url) return output({ list: [] });
+    return output({ list: [vod] });
+  } catch (e) {
     const html = await httpGet(baseUrl + '/detail/' + vid);
     const ft = flightText(html);
     const get = function (k) {
-      let m = new RegExp('"' + k + '":"(.*?)"').exec(ft);
-      if (m) { try { return JSON.parse('"' + m[1] + '"'); } catch (e) { return m[1]; } }
-      const m2 = new RegExp('"' + k + '":([^,}\\]]+)').exec(ft);
-      return m2 ? m2[1].replace(/^"|"$/g, '') : '';
+      const m = new RegExp('"' + k + '":"(.*?)"').exec(ft);
+      return m ? m[1] : '';
     };
-    const vodName = get('vodName');
-    if (!vodName && ft.indexOf('episodeList') < 0) return output({ list: [] });
-    const vodId = get('vodId') || vid;
-    const pic = get('vodPic');
-    const actor = get('vodActor');
-    const director = get('vodDirector');
-    const contentRaw = get('vodContent') || get('vodBlurb');
-    const area = get('vodArea');
-    const lang = get('vodLang');
-    let year = get('vodYear') || get('vodPubdate');
-    const ym = /(\d{4})/.exec(str(year));
-    if (ym) year = ym[1];
-    const vclass = get('vodClass') || get('typeName');
-    let remarks = str(get('vodRemarks') || get('vodVersion') || get('vodSerial'));
-    const serial = get('vodSerial');
-    const total = get('vodTotal');
-    if (!remarks) { if (serial && total) remarks = '(' + serial + '/' + total + ')'; else if (serial) remarks = '(' + serial + ')'; }
-    let eps = [];
-    const epArr = extractJsonByKey(ft, 'episodeList');
-    if (Array.isArray(epArr)) eps = epArr;
-    else {
-      const em = /"episodeList":\[([\s\S]*?)\]/.exec(ft);
-      if (em) {
-        try { eps = JSON.parse('[' + em[1] + ']'); }
-        catch (e) {
-          const re2 = /"nid":(\d+),"name":"(.*?)"/g;
-          let mm; while ((mm = re2.exec(em[1])) !== null) eps.push({ nid: mm[1], name: mm[2] });
-        }
-      }
-    }
-    let playUrl = '';
-    if (eps && eps.length) {
-      const parts = [];
-      for (const ep of eps) {
-        const nid = str(ep.nid || '');
-        let nm = str(ep.name || '正片').replace(/\$/g, '＄').replace(/#/g, '＃');
-        if (!nid) continue;
-        parts.push(nm + '$' + str(vodId) + '_' + nid);
-      }
-      playUrl = parts.join('#');
-    }
-    const vod = { vod_id: str(vodId), vod_name: vodName || ('ID_' + str(vodId)), vod_pic: pic, vod_actor: actor, vod_director: director, vod_content: stripTags(contentRaw), vod_area: area, vod_lang: lang, vod_year: str(year), type_name: vclass, vod_remarks: remarks, vod_play_from: playUrl ? '金牌影院' : '', vod_play_url: playUrl };
-    return output({ list: [vod] });
-  } catch (e) { return output({ list: [] }); }
+    const eps = extractJsonByKey(ft, 'episodeList') || [];
+    const list = eps.map(function (ep) { return str(ep.name || '正片') + '$' + vid + '_' + str(ep.nid || ''); }).join('#');
+    return output({ list: [{ vod_id: vid, vod_name: get('vodName'), vod_pic: get('vodPic'), vod_actor: get('vodActor'), vod_director: get('vodDirector'), vod_content: stripTags(get('vodContent') || get('vodBlurb')), vod_area: get('vodArea'), vod_lang: get('vodLang'), vod_year: get('vodYear') || get('vodPubdate'), type_name: get('typeName') || get('vodClass'), vod_remarks: get('vodRemarks') || get('vodVersion'), vod_play_from: list ? '金牌影院' : '', vod_play_url: list }] });
+  }
 }
 
 async function search(key, quick, pg) {
-  const wd = str(key || '').trim();
   const page = parseInt(pg, 10) || 1;
+  const wd = str(key || '').trim();
   if (!wd) return output({ list: [], page: page, pagecount: 1, limit: 48, total: 0 });
   try {
-    let url = baseUrl + '/vod/search/' + encodeURIComponent(wd);
-    if (page > 1) url += '?page=' + page;
-    const html = await httpGet(url);
+    return output(await apiSearch(wd, page));
+  } catch (e) {
+    const html = await httpGet(baseUrl + '/vod/search/' + encodeURIComponent(wd) + (page > 1 ? '?page=' + page : ''));
     const ft = flightText(html);
-    let rs = extractJsonByKey(ft, 'result');
-    if (rs && rs.list && rs.list.length) {
-      const list = [];
-      for (const it of rs.list) { const m = mapVodItem(it); if (m) list.push(m); }
-      return output({ list: list, page: Number(rs.pageNum) || page, pagecount: Number(rs.totalPage) || 1, limit: Number(rs.pageSize) || 48, total: Number(rs.totalCount) || list.length });
-    }
-    const vd = extractJsonByKey(ft, 'videoList');
-    const data = vd && vd.data ? vd.data : null;
-    if (data && data.list && data.list.length) {
-      const list = [];
-      for (const it of data.list) { const m = mapVodItem(it); if (m) list.push(m); }
+    const result = extractJsonByKey(ft, 'result') || extractJsonByKey(ft, 'videoList');
+    const data = result && result.data ? result.data : result;
+    if (data && Array.isArray(data.list) && data.list.length) {
+      const list = mapApiList(data.list);
       return output({ list: list, page: Number(data.pageNum) || page, pagecount: Number(data.totalPage) || 1, limit: Number(data.pageSize) || 48, total: Number(data.totalCount) || list.length });
     }
-    const fb = parseCardsFallback(html);
-    return output({ list: fb, page: page, pagecount: fb.length ? page + 1 : 1, limit: 48, total: fb.length ? 9999 : 0 });
-  } catch (e) { return output({ list: [], page: page, pagecount: 1, limit: 48, total: 0 }); }
+    const list = parseCardsFallback(html);
+    return output({ list: list, page: page, pagecount: list.length ? page + 1 : 1, limit: 48, total: list.length ? 9999 : 0 });
+  }
 }
 
+async function apiPlay(vodId, nid, referer) {
+  const data = await apiGet('/anonymous/v2/video/episode/url', { clientType: 1, id: str(vodId), nid: str(nid) }, referer);
+  return Array.isArray(data.list) ? data.list : [];
+}
+function playItem(item) {
+  const url = str(item && item.url);
+  return url && item && (item.flag === true || item.needLogin === false) ? item : null;
+}
+function selectPlayItem(list) {
+  for (const item of list || []) { const selected = playItem(item); if (selected) return selected; }
+  return null;
+}
 async function play(flag, id, vipFlags) {
   const s = str(id || '');
   let vodId = '', nid = '';
   const m = /(\d+)_(\d+)/.exec(s);
   if (m) { vodId = m[1]; nid = m[2]; }
   else { const nums = s.match(/\d+/g) || []; if (nums.length >= 2) { vodId = nums[nums.length - 2]; nid = nums[nums.length - 1]; } }
-  let playPage = s;
-  if (vodId && nid) playPage = baseUrl + '/vod/play/' + vodId + '/sid/' + nid;
-  else if (s.indexOf('http') === 0) playPage = s;
-  try {
-    const html = await httpGet(playPage);
-    const all = flightText(html) + '\n' + str(html);
-    const m3 = /(https?:[^"'\\s<>]+\.m3u8[^"'\\s<>]*)/i.exec(all);
-    if (m3) return output({ parse: 0, url: m3[1], header: PLAY_HEADERS });
-    const mp4 = /(https?:[^"'\\s<>]+\.mp4[^"'\\s<>]*)/i.exec(all);
-    if (mp4) return output({ parse: 0, url: mp4[1], header: PLAY_HEADERS });
-    return output({ parse: 1, url: playPage, header: HEADERS });
-  } catch (e) { return output({ parse: 1, url: playPage, header: HEADERS }); }
+  const playPage = vodId && nid ? baseUrl + '/vod/play/' + vodId + '/sid/' + nid : s;
+  if (vodId && nid) {
+    const list = await apiPlay(vodId, nid, playPage);
+    const selected = selectPlayItem(list);
+    if (selected) return output({ parse: 0, url: selected.url, header: PLAY_HEADERS });
+    throw new Error('播放线路不可用');
+  }
+  if (s.indexOf('http') === 0 && /\.m3u8(?:[?#]|$)/i.test(s)) return output({ parse: 0, url: s, header: PLAY_HEADERS });
+  const html = await httpGet(playPage);
+  const all = flightText(html) + '\n' + str(html);
+  const m3 = /(https?:[^"'\\s<>]+\.m3u8[^"'\\s<>]*)/i.exec(all);
+  if (m3) return output({ parse: 0, url: m3[1], header: PLAY_HEADERS });
+  const mp4 = /(https?:[^"'\\s<>]+\.mp4[^"'\\s<>]*)/i.exec(all);
+  if (mp4) return output({ parse: 0, url: mp4[1], header: PLAY_HEADERS });
+  throw new Error('播放地址不可用');
 }
 
 async function homeContent(filter) { return home(filter); }

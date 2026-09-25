@@ -175,6 +175,7 @@ dns:
     - GEOSITE,apple-cn,real-ip
     - GEOSITE,google-cn,real-ip
     - GEOSITE,games-cn,real-ip
+    - GEOSITE,networktest,fake-ip
     - GEOSITE,games,fake-ip
     - GEOSITE,ai,fake-ip
     - GEOSITE,proxy,fake-ip
@@ -220,6 +221,7 @@ dns:
     - GEOSITE,apple-cn,real-ip
     - GEOSITE,google-cn,real-ip
     - GEOSITE,games-cn,real-ip
+    - GEOSITE,networktest,fake-ip
     - GEOSITE,games,fake-ip
     - GEOSITE,ai,fake-ip
     - GEOSITE,proxy,fake-ip
