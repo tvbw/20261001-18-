@@ -1859,5 +1859,58 @@
       "name": "text||span@text||title",
       "url": "href"
     }
+  },
+   {
+    "name": "📺人人影视PRO",
+    "api": "https://www.renren.pro",
+    "type": 2,
+    "searchable": true,
+    "removeReferer": false,
+    "header": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      "Referer": "https://www.renren.pro/",
+      "Accept-Language": "zh-CN,zh;q=0.9",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+    },
+    "categories": [
+      {
+        "name": "全部",
+        "url": "/list/all?page={{page}}",
+        "url2": "/list/all"
+      },
+      {
+        "name": "影片库",
+        "url": "/list/all?page={{page}}",
+        "url2": "/list/all"
+      }
+    ],
+    "list": {
+      "list": ".module-item",
+      "name": "a[title]@title||.module-item-title@text||img@alt||.video-name@text",
+      "tips": ".module-item-text@text||.module-item-caption@text||.video-text@text",
+      "coverUrl": "img@data-src||img@src",
+      "detailUrl": "a[href*='/play/']@href||href"
+    },
+    "search": {
+      "url": "/search?wd={{key}}",
+      "list": ".module-item, a[href*='/play/']",
+      "name": "img@alt||a[title]@title||.module-item-title@text||text",
+      "tips": ".module-item-text@text||.video-text@text||.module-item-caption@text",
+      "coverUrl": "img@data-src||img@src",
+      "detailUrl": "a[href*='/play/']@href||href"
+    },
+    "detail": {
+      "meta": "title@text||h1@text||.video-info-header@text"
+    },
+    "play": {
+      "list": "a[href*='/play/']",
+      "name": "text||title",
+      "url": "href"
+    },
+    "toc": {
+      "list": "body@js:function getPlay(html){var r=[],s={},m;var re=/https?:\\/\\/[^\"'\\s<>]+\\.m3u8[^\"'\\s<>]*/gi;while((m=re.exec(html))){var u=m[0].replace(/&amp;/g,'&');if(s[u])continue;s[u]=1;r.push({name:'播放',url:u});}if(!r.length){var re2=/url\\s*:\\s*[\"'](https?:\\/\\/[^\"']+\\.m3u8[^\"']*)[\"']/i;m=html.match(re2);if(m)r.push({name:'播放',url:m[1]});}return r.length?JSON.stringify(r):'[]';}getPlay(__result);",
+      "name": "$.name",
+      "url": "$.url"
+    }
   }
 ]

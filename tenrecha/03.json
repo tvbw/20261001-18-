@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生存狀態面板 - 分頁版</title>
+<style>
+    /* ================= 基礎設定 ================= */
+    :root {
+        --bg-color: #0f172a;
+        --card-bg: rgba(30, 41, 59, 0.8);
+        --text-main: #f1f5f9;
+        --text-sub: #94a3b8;
+        --theme-pink: #e5486a;
+        --theme-blue: #3b82f6;
+        --border-color: rgba(148, 163, 184, 0.2);
+        --shadow-soft: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+    }
+
+    body {
+        background: radial-gradient(circle at 50% 0%, #1e293b, #0f172a);
+        color: var(--text-main);
+        font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+        margin: 0;
+        padding: 20px;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+    }
+
+    .app-container {
+        width: 100%;
+        max-width: 1100px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    /* ================= 頂部資訊列 ================= */
+    .header-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--card-bg);
+        backdrop-filter: blur(12px);
+        padding: 16px 24px;
+        border-radius: 16px;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-soft);
+    }
+
+    .header-info {
+        display: flex;
+        gap: 24px;
+        font-size: 14px;
+        color: var(--text-sub);
+    }
+    .header-info span strong {
+        color: var(--text-main);
+        font-size: 16px;
+    }
+
+    /* ================= 分頁導航 ================= */
+    .tab-nav {
+        display: flex;
+        gap: 8px;
+        background: var(--card-bg);
+        padding: 8px;
+        border-radius: 16px;
+        border: 1px solid var(--border-color);
+        backdrop-filter: blur(12px);
+        flex-wrap: wrap;
+    }
+
+    .tab-btn {
+        flex: 1;
+        min-width: 100px;
+        padding: 12px 20px;
+        border: none;
+        background: transparent;
+        color: var(--text-sub);
+        font-size: 15px;
+        font-weight: 600;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .tab-btn:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-main);
+    }
+
+    .tab-btn.active {
+        background: var(--theme-blue);
+        color: white;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    /* ================= 內容區域 ================= */
+    .tab-content {
+        flex: 1;
+        position: relative;
+    }
+
+    .tab-pane {
+        display: none; /* 預設隱藏所有分頁 */
+        animation: fadeIn 0.4s ease;
+    }
+
+    .tab-pane.active {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 地圖分頁特殊處理：讓地圖佔滿整個區域 */
+    #tab-map .image-viewer-modal__content {
+        height: 70vh !important; /* 強制地圖高度 */
+        width: 100% !important;
+        margin: 0 auto;
+    }
+    
+    /* 覆蓋原本的 Modal 樣式，讓它變成內嵌 */
+    #tab-map .image-viewer-modal {
+        position: relative !important;
+        inset: auto !important;
+        padding: 0 !important;
+        background: transparent !important;
+        backdrop-filter: none !important;
+        z-index: 1 !important;
+        display: block !important;
+    }
+
+    /* 讓原本的按鈕容器隱藏在分頁中，或者重新設計 */
+    .button-container {
+        display: none; /* 我們把按鈕移到分頁導航或各分頁內了 */
+    }
+</style>
+</head>
+<body>
+
+<div class="app-container">
+    <!-- 頂部資訊列 (從原本的 r() 函數中提取關鍵資訊) -->
+    <div class="header-bar">
+        <div class="header-info">
+            <span>時間：<strong id="header-time">--:--</strong></span>
+            <span>地點：<strong id="header-location">未知</strong></span>
+            <span>生命：<strong id="header-hp">--/--</strong></span>
+            <span>精神：<strong id="header-mp">--/--</strong></span>
+        </div>
+        <div>
+            <span style="color: var(--theme-pink); font-weight: bold;">求生點數: <span id="header-points">0</span></span>
+        </div>
+    </div>
+
+    <!-- 分頁導航列 -->
+    <div class="tab-nav">
+        <button class="tab-btn active" data-tab="status">📊 狀態</button>
+        <button class="tab-btn" data-tab="tasks">📜 任務</button>
+        <button class="tab-btn" data-tab="world">🌍 世界</button>
+        <button class="tab-btn" data-tab="inventory">🎒 物品</button>
+        <button class="tab-btn" data-tab="map">🗺️ 地圖</button>
+    </div>
+
+    <!-- 分頁內容區 -->
+    <div class="tab-content">
+        <!-- 狀態分頁 -->
+        <div id="tab-status" class="tab-pane active">
+            <div id="content-status"></div>
+        </div>
+
+        <!-- 任務分頁 -->
+        <div id="tab-tasks" class="tab-pane">
+            <div id="content-tasks"></div>
+        </div>
+
+        <!-- 世界分頁 -->
+        <div id="tab-world" class="tab-pane">
+            <div id="content-world"></div>
+        </div>
+
+        <!-- 物品分頁 -->
+        <div id="tab-inventory" class="tab-pane">
+            <div id="content-inventory"></div>
+        </div>
+
+        <!-- 地圖分頁 -->
+        <div id="tab-map" class="tab-pane">
+            <div id="content-map"></div>
+        </div>
+    </div>
+</div>
+
+<!-- 隱藏原本的 survival-ui，或者我們直接把 survival-ui 作為容器 -->
+<div id="survival-ui" style="display: none;"></div>
+
+<!-- 這裡放入你原本的 JavaScript -->
+<!-- ... 你原本的 <script> 內容 ... -->
+</body>
+</html>
