@@ -64,6 +64,7 @@ jobs:
             [ycc1195835265]="https://github.com/ycc1195835265/18.git"
             [zhangfdzr]="https://github.com/zhangfdzr/sese-.git"
             [666tv]="https://github.com/666tv/69.git"
+            [tenrecha]="https://gitlab.com/tenrecha/recha.git"
           ) 
  
           for name in "${!repos[@]}"; do 
@@ -93,7 +94,7 @@ jobs:
  
       - name: Fix timestamps（安全版） 
         run: | 
-          dirs="dr tvbox T4 wzxxcz Tomorrow aa999ok sky4726 ediart lemonguo121 leexuben yjl zheng1976 FGBLH yihad168 cpu_iy cpu_iy2 reF1nd bd catvod jaychouqq _posts loleis Ye-11X115490 wanganni ycc1195835265 zhangfdzr 666tv" 
+          dirs="dr tvbox T4 wzxxcz Tomorrow aa999ok sky4726 ediart lemonguo121 leexuben yjl zheng1976 FGBLH yihad168 cpu_iy cpu_iy2 reF1nd bd catvod jaychouqq _posts loleis Ye-11X115490 wanganni ycc1195835265 zhangfdzr 666tv tenrecha" 
  
           for d in $dirs; do 
             [ -d "$d" ] || continue 
