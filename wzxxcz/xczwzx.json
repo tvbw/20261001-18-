@@ -22,12 +22,6 @@
             "url": "https://gh-proxy.org/https://raw.githubusercontent.com/adminouyang/231006/refs/heads/main/py/%E4%BC%98%E8%B4%A8%E6%BA%90/output/ipv4/result.txt"
         },
 		{
-            "name": "北京全网通",
-            "type": 0,
-            "ua": "okhttp/5.3.2",
-            "url": "http://129.211.14.102:27777/api.php?token=79b8cf3f98f4531c1a52137e121d2993"
-        },
-		{
             "name": "裤佬IPTV直播",
             "type": 0,
             "ua": "okhttp/5.3.2",
@@ -1219,12 +1213,6 @@
             "ext": "https://y2s52n7.com,https://m.hkybqufgh.com,https://m.sizhengxt.com,https://m.9zhoukj.com,https://m.sizhengxt.com,https://m.jiabaide.cn"
         },
 		{
-            "key": "6080影视",
-            "name": "💡6080影视",
-            "type": 3,
-            "api": "./py/6080影视.py"
-        },
-		{
             "key": "葫芦影视",
             "name": "💡葫芦影视",
             "type": 3,
@@ -1260,12 +1248,6 @@
             "name": "💡首映网",
             "type": 3,
             "api": "./py/首映网🍀TG @hshsjk9.py"
-        },
-		{
-            "key": "剧下饭4K",
-            "name": "🍗剧下饭4K",
-            "type": 3,
-            "api": "./py/剧下饭4K🍀TG @hshsjk9.py"
         },
 		{
             "key": "兔岛影院",
@@ -1343,12 +1325,6 @@
             "api": "./py/多瑙影院.py"
         },
 		{
-            "key": "yl",
-            "name": "⛱️永乐视频1",
-            "type": 3,
-            "api": "./py/永乐视频.py"
-        },
-		{
             "key": "ayf",
             "name": "💡爱壹帆影视",
             "type": 3,
@@ -1361,22 +1337,10 @@
             "api": "./py/农民影视.py"
         },
 		{
-            "key": "夏日影院",
-            "name": "🌤️夏日影院",
-            "type": 3,
-            "api": "./py/夏日影院.py"
-        },
-		{
             "key": "迷你影视",
             "name": "💵迷你影视",
             "type": 3,
             "api": "./py/迷你影视.py"
-        },
-		{
-            "key": "CNFLIX",
-            "name": "🍊CNFLIX影视",
-            "type": 3,
-            "api": "./py/CNFLIX.py"
         },
 		{
             "key": "华谊影视1",
@@ -1389,12 +1353,6 @@
             "name": "🍊6080新视觉",
             "type": 3,
             "api": "./py/6080新视觉.py"
-        },
-		{
-            "key": "99短剧网",
-            "name": "🥂99短剧网",
-            "type": 3,
-            "api": "./py/99短剧网.py"
         },
 		{
             "key": "橘汁视频",
@@ -1545,6 +1503,36 @@
             "name": "🍊独播库2",
             "type": 3,
             "api": "./py/独播库.py"
+        },
+		{
+            "key": "55影院",
+            "name": "🍊55影院",
+            "type": 3,
+            "api": "./py/55影院(关梯).py"
+        },
+		{
+            "key": "无极电影网",
+            "name": "🍊无极电影网",
+            "type": 3,
+            "api": "./py/无极电影网(关梯).py"
+        },
+		{
+            "key": "果果短剧1",
+            "name": "🍎果果短剧1",
+            "type": 3,
+            "api": "./py/果果短剧.py"
+        },
+		{
+            "key": "飞牛影视3",
+            "name": "🐂飞牛影视3",
+            "type": 3,
+            "api": "./py/飞牛影视.py"
+        },
+		{
+            "key": "剧下饭4K",
+            "name": "🍗剧下饭4K",
+            "type": 3,
+            "api": "./py/剧下饭4K.py"
         },
 		{
             "key": "爬虫影视",

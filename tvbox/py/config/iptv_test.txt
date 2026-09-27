@@ -6899,6 +6899,8 @@ Alkass SHOOF,
 Alkass Six,
 Alkass Two,
 Star Sports 1,
+Alkass Three,
+CazeTV (1080i),
 
 少儿,#genre#
 央视少儿,
@@ -7519,6 +7521,7 @@ Raj Pariwar,
 M Sign Media,
 Malabar News,
 Zee Malayalam News,
+Rada TV,
 
 财经,#genre#
 央视财经,
