@@ -25,7 +25,7 @@ const SOURCES = {
     's17': { 'name': '📺越南', 'api': 'https://vnzyz.com/api.php/provide/vod' },
     's18': { 'name': '📺15', 'api': 'https://155api.com/api.php/provide/vod/' },
     's19': { 'name': '📺91AV', 'api': 'https://91av.cyou/api.php/provide/vod/' },
-    's20': { 'name': '🌕红楼', 'api': 'https://www.hlzy.store/api.php/provide/vod/' },
+    's20': { 'name': '🌕红楼', 'api': 'https://www.hlzyapi.vip/api.php/provide/vod/' },
     's21': { 'name': '📺小鸡', 'api': 'https://api.xiaojizy.live/provide/vod/' },
     's22': { 'name': '📺大奶', 'api': 'https://apidanaizi.com/api.php/provide/vod/' },
     's23': { 'name': '📺豆豆', 'api': 'https://api.douapi.cc/api.php/provide/vod/' },
@@ -46,14 +46,16 @@ const SOURCES = {
     's38': { 'name': '🐾聚合2', 'api': 'http://150.109.94.44:1112/api.php/provide/vod/' },
     's39': { 'name': '🐾CK百货', 'api': 'https://ckbh1.xyz/api.php/provide/vod/' },
     's40': { 'name': '🐾番茄', 'api': 'https://fqzy.me/api.php/provide/vod/' },
-    's41': { 'name': '🐾森林', 'api': 'https://slapibf.com/api.php/provide/vod/' },
+    's41': { 'name': '🐾98', 'api': 'https://jp98.vip/api.php/provide/vod/' },
+    's42': { 'name': '🐾森林', 'api': 'https://slapibf.com/api.php/provide/vod/' },
     // 大地 feifei2 特殊 JSON
-    's42': { 'name': '🐾大地', 'api': 'https://dadiapi.com/feifei2/', 'type': 3 },
-    's43': { 'name': '🐾色猫', 'api': 'https://caiji.semaozy.net/inc/apijson_vod.php' },
-    's44': { 'name': '🐾滴滴', 'api': 'https://api.ddapi.cc/api.php/provide/vod/' },
-    's45': { 'name': '🐾91', 'api': 'https://91md.me/api.php/provide/vod/' },
-    's46': { 'name': '🐾细胞', 'api': 'https://www.xxibaozyw.com/api.php/provide/vod/' },
-    's47': { 'name': '📺湿园', 'api': 'https://xxavs.com/api.php/provide/vod' }
+    's43': { 'name': '🐾大地', 'api': 'https://dadiapi.com/feifei2/', 'type': 3 },
+    's44': { 'name': '🐾色猫', 'api': 'https://caiji.semaozy.net/inc/apijson_vod.php' },
+    's45': { 'name': '🐾滴滴', 'api': 'https://api.ddapi.cc/api.php/provide/vod/' },
+    's46': { 'name': '🐾91', 'api': 'https://91md.me/api.php/provide/vod/' },
+    's47': { 'name': '🐾免费', 'api': 'https://yuanlib.com/api.php/provide/vod/' },
+    's48': { 'name': '🐾细胞', 'api': 'https://www.xxibaozyw.com/api.php/provide/vod/' },
+    's49': { 'name': '📺湿园', 'api': 'https://xxavs.com/api.php/provide/vod' }
 };
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";

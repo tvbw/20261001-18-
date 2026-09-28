@@ -7,16 +7,19 @@
   * 枫叶4k.py    —— parse_map 多线路解析 / 4K 标识提取
   * 枫叶.py      —— /index.php/ajax/data JSON 分类回调(规避 cupfox-list 验证码)
 
-2026-08 实站适配(已在 www.cd-zj.com / www.zzztool.com 上验证):
-  * /cupfox-list/ /list/ /cupfox-search/ HTML 路由均被"系统安全验证"验证码拦截
-    -> 数字分类改用 /index.php/ajax/data JSON 接口(可正常返回)
-  * suggest 联想搜索接口已关闭 -> searchContent 做 suggest + HTML 双兜底
-  * 播放页 player_aaaa -> 二次解析(zzrs.mfdyvip.com / fgsrg.hzqingshan.com)可用
+2026-09-27 多线路播放修复:
+   * 解析线路表改从站点 /static/js/playerconfig.js 的 player_list 读取
+     (ps=1 需二次解析 / ps=0 直连), 站点不可达时用内置默认副本
+   * 修复原先只认 YYNB/JD4K 两个 key 导致 蓝光2k(co) 蓝光2k-2(vwnet) 等线路
+     被全部强制走 JD4K 域名, 解析服务拒绝后整条线路不可用
+   * 指定域名失败时按 parse_pool 顺序换用其余解析域名
+   * 补齐 encrypt=1/2 的解码处理
 """
 import os
 import re
 import json
 import time
+import base64
 import urllib.parse
 from datetime import datetime
 
@@ -49,20 +52,65 @@ class Spider(BaseSpider):
         "https://www.cd-zj.com",
     ]
     base_url = default_sites[0]
-    cookie = "verify_success=1"
+    # verify_success 越过列表页的"系统安全验证", site_entry 越过播放页的继续播放确认
+    cookie = "verify_success=1; site_entry=1"
     debug = False
     timeout = 15
 
-    # 二次解析接口: 播放页 url 的线路前缀 -> 解析服务域名
-    parse_map = {
-        'YYNB': 'https://zzrs.mfdyvip.com',
-        'JD4K': 'https://fgsrg.hzqingshan.com',
+    # 播放源(player_aaaa.from) -> 解析服务域名 的人工覆盖表
+    # 正常取值来自站点 player_list, 这里只放用户在 extend 里显式指定的内容
+    parse_map = {}
+
+    # 站点 /static/js/playerconfig.js 里的 player_list 权威副本
+    # ps=1 走二次解析(ps 字段含义: 1=需解析 0=直连), parse 为解析前缀
+    default_player_list = {
+        'JD2K':     {'show': '蓝光2k', 'ps': '1', 'parse': 'https://fgsrg.hzqingshan.com/player/?url='},
+        'co':       {'show': '蓝光2k', 'ps': '1', 'parse': 'https://zsmyyrv.hzqingshan.com/player/?url='},
+        'BBA':      {'show': '蓝光2k', 'ps': '1', 'parse': 'https://zsmyyrv.hzqingshan.com/player/?url='},
+        'vwnet':    {'show': '蓝光2k', 'ps': '1', 'parse': 'https://zsmyyrv.hzqingshan.com/player/?url='},
+        'YYNB':     {'show': '蓝光2k', 'ps': '1', 'parse': 'https://zsmyyrv.hzqingshan.com/player/?url='},
+        'JD4K':     {'show': '至臻4k', 'ps': '1', 'parse': 'https://fgsrg.hzqingshan.com/player/?url='},
+        'qiyi':     {'show': '爱奇艺', 'ps': '1', 'parse': 'https://zzrs.mfdyvip.com/player/?url='},
+        'bilibili': {'show': 'B站',    'ps': '1', 'parse': 'https://zzrs.mfdyvip.com/player/?url='},
+        'qq':       {'show': '腾讯',   'ps': '1', 'parse': 'https://zzrs.mfdyvip.com/player/?url='},
+        'youku':    {'show': '优酷',   'ps': '1', 'parse': 'https://zzrs.mfdyvip.com/player/?url='},
+        'dyttm3u8': {'show': '自营t',  'ps': '0', 'parse': ''},
+        '1080zy':   {'show': '自营y',  'ps': '0', 'parse': ''},
+        '1080zyk':  {'show': '自营y',  'ps': '0', 'parse': ''},
+        'rym3u8':   {'show': '自营r',  'ps': '0', 'parse': ''},
+        'ruyi':     {'show': '自营r',  'ps': '0', 'parse': ''},
     }
+
+    # 全部已知的解析服务域名, 某个域名超时/失效时按顺序换用
+    parse_pool = [
+        'https://zsmyyrv.hzqingshan.com',
+        'https://fgsrg.hzqingshan.com',
+        'https://zzrs.mfdyvip.com',
+    ]
+
+    # 解析服务常有连接超时, 单次等待过长会让播放器先报播放超时
+    parse_timeout = 8   # 单域名单次请求超时(秒)
+    parse_retries = 2   # 单域名重试次数
+
+    # 已确认失效的解析服务域名, 连续失败若干次后暂时跳过
+    _parse_bad = {}
+    PARSE_BAD_TTL = 900  # 15 分钟
+
+    # 详情页的集数->线路映射, 供某条线路不可用时回落到同一集的其它线路
+    _ep_map = {}
+
+    # 回落链深度, 防止多条线路互相递归调用
+    _alt_depth = 0
 
     # 动态 host 缓存
     _cache_host = ""
     _cache_time = 0
     CACHE_DURATION = 300  # 5 分钟
+
+    # player_list 缓存(按 host 分别缓存)
+    _cache_plist = {}
+    _cache_plist_time = 0
+    PLIST_DURATION = 1800  # 30 分钟
 
     # ----------------------------------------------------------
     # 基础请求
@@ -85,20 +133,25 @@ class Spider(BaseSpider):
             headers["Cookie"] = self.cookie
         return headers
 
-    def _fetch(self, url, referer=None):
-        """请求 HTML(相对路径自动拼接 base_url), 失败返回 ''"""
-        try:
-            if not url.startswith('http'):
-                url = self.base_url + url
-            r = requests.get(url, headers=self._headers(referer), timeout=self.timeout)
-            r.encoding = r.apparent_encoding or 'utf-8'
-            if r.status_code == 200:
-                return r.text
-            self._log('请求失败', r.status_code, url)
-            return ''
-        except Exception as e:
-            self._log('请求异常', url, e)
-            return ''
+    def _fetch(self, url, referer=None, retries=3, timeout=None):
+        """请求 HTML(相对路径自动拼接 base_url), 失败返回 ''
+        站点对同 IP 高频请求会间歇性断连, 这里做有限次重试
+        """
+        if not url.startswith('http'):
+            url = self.base_url + url
+        timeout = timeout or self.timeout
+        for attempt in range(retries):
+            try:
+                r = requests.get(url, headers=self._headers(referer), timeout=timeout)
+                r.encoding = r.apparent_encoding or 'utf-8'
+                if r.status_code == 200:
+                    return r.text
+                self._log('请求失败', r.status_code, url)
+            except Exception as e:
+                self._log('请求异常', url, e)
+            if attempt + 1 < retries:
+                time.sleep(0.6)
+        return ''
 
     def _fetch_json(self, url, referer=None):
         """请求 JSON 接口并解析为 dict, 失败返回 {}"""
@@ -217,7 +270,7 @@ class Spider(BaseSpider):
                 self._log('读取 Cookie 文件失败', e)
                 self.cookie = ''
         if not self.cookie:
-            self.cookie = "verify_success=1"
+            self.cookie = "verify_success=1; site_entry=1"
 
         self.debug = bool(ext.get('debug', False))
 
@@ -625,6 +678,20 @@ class Spider(BaseSpider):
                 "vod_play_from": "$$$".join(valid_from),
                 "vod_play_url": "$$$".join(play_url),
             })
+            # 记录 影片 -> 集号 -> [(线路, 集token)], 供播放时跨线路回落
+            # key 用 href 末段的集号: 各线路集名文字有 1 / 01 / 第01集 三种写法, 只有集号是一致的
+            ep_map = {}
+            for i, pf in enumerate(valid_from):
+                if i >= len(play_url):
+                    break
+                for ep in play_url[i].split('#'):
+                    if '$' not in ep:
+                        continue
+                    title, ep_token = ep.split('$', 1)
+                    sid = self._ep_no(ep_token.replace('/play/', '').rsplit('-', 1)[-1])
+                    ep_map.setdefault(sid, []).append((pf, ep_token))
+            self._ep_map[vid] = ep_map
+            self._log('已建立集数线路映射', vid, len(ep_map))
         except Exception as e:
             self._log('detailContent 异常', e)
         return result
@@ -675,51 +742,150 @@ class Spider(BaseSpider):
     # ----------------------------------------------------------
     # 播放(含二次解析)
     # ----------------------------------------------------------
-    def _resolve_video_url(self, video_url, play_id=None):
-        line_key = play_id if play_id else re.split(r'[-_]', video_url)[0]
-        base_domain = self.parse_map.get(line_key)
-        if not base_domain:
-            self._log('未匹配到解析线路, 使用默认 JD4K')
-            base_domain = self.parse_map.get('JD4K', 'https://fgsrg.hzqingshan.com')
+    def get_player_list(self):
+        """读取站点 /static/js/playerconfig.js 的 player_list(带缓存)
+        返回 {from_key: {show, ps, parse}}; 站点不可达时返回内置默认副本
+        """
+        now = time.time()
+        cached = self._cache_plist.get(self.base_url)
+        if cached and now - self._cache_plist_time < self.PLIST_DURATION:
+            return cached
 
-        # 1) 获取 token
-        token_page = self._fetch(f'{base_domain}/player/?url={video_url}', referer=self.base_url)
+        plist = {}
+        for _ in range(3):
+            js = self._fetch('/static/js/playerconfig.js')
+            if not js:
+                continue
+            m = re.search(r'player_list=(\{.*?\}),MacPlayerConfig\.downer_list', js, re.S)
+            if not m:
+                continue
+            try:
+                plist = json.loads(m.group(1))
+            except Exception as e:
+                self._log('player_list JSON 解析失败', e)
+                plist = {}
+            break
+
+        if not plist:
+            self._log('playerconfig.js 不可用, 使用内置默认副本')
+            plist = dict(self.default_player_list)
+
+        self._cache_plist[self.base_url] = plist
+        self._cache_plist_time = now
+        return plist
+
+    def _parse_with_domain(self, base_domain, video_url, timeout=None):
+        """在指定解析域名上完成 换token + 换取播放地址 两步
+        返回 (final_url, err) ; err 为 None 表示成功
+        解析服务常处于半死状态, 这里用较短超时且只重试一次, 避免拖垮播放
+        """
+        timeout = timeout or self.parse_timeout
+        base_domain = base_domain.split('/player')[0].rstrip('/')
+        player_url = f'{base_domain}/player/?url=' + urllib.parse.quote(video_url, safe='')
+
+        # 1) 取 token
+        token_page = self._fetch(player_url, referer=self.base_url,
+                                 retries=self.parse_retries, timeout=timeout)
         if not token_page:
-            raise RuntimeError("token 获取失败")
-        token = ''
-        m = re.search(r'data-te="([^"]+)"', token_page)
-        if m:
-            token = m.group(1)
-        else:
-            soup = BeautifulSoup(token_page, 'html.parser')
-            el = soup.select_one('#player-data')
-            if el:
-                token = el.get('data-te', '')
-        if not token:
-            raise RuntimeError("未找到 token")
+            return None, f'{base_domain} 取 token 页失败'
 
-        # 2) 换取真实播放地址
-        api_url = f'{base_domain}/player/mplayer.php'
-        headers = self._headers(referer=self.base_url)
-        headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
-        resp = requests.post(api_url, data={'url': video_url, 'token': token},
-                             headers=headers, timeout=self.timeout)
-        data = resp.json()
-        final_url = data.get('url', '')
+        token = ''
+        m = re.search(r'id="player-data"[^>]*\bdata-te="([^"]*)"', token_page, re.S)
+        if m:
+            token = m.group(1).strip()
+        if not token:
+            m = re.search(r'data-te="([^"]+)"', token_page)
+            if m:
+                token = m.group(1).strip()
+        if not token:
+            return None, f'{base_domain} 未找到 token'
+
+        # 2) 换真实播放地址
+        headers = {
+            'User-Agent': self._headers()['User-Agent'],
+            'Referer': player_url,
+            'Origin': base_domain,
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json, text/javascript, */*; q=0.01',
+        }
+        try:
+            resp = requests.post(f'{base_domain}/player/mplayer.php',
+                                 data={'url': video_url, 'token': token},
+                                 headers=headers, timeout=timeout)
+        except Exception as e:
+            return None, f'{base_domain} POST 异常 {e}'
+
+        try:
+            data = resp.json()
+        except Exception:
+            return None, f'{base_domain} 返回非 JSON (HTTP {resp.status_code})'
+
+        if data.get('code') != 200:
+            return None, f'{base_domain} 拒绝 code={data.get("code")} msg={data.get("msg")}'
+
+        final_url = data.get('url', '') or ''
         if not final_url:
-            raise RuntimeError("解析结果为空")
-        if final_url.startswith('/playproxy.php'):
+            return None, f'{base_domain} 解析结果为空'
+        if final_url.startswith('/'):
             final_url = base_domain + final_url
-        return final_url
+        return final_url, None
+
+    def _resolve_video_url(self, video_url, play_id=None):
+        """按 player_aaaa.from 选择解析线路
+        1) ps=0 自营线路 -> 直连返回
+        2) ps=1 -> 用 player_list 指定域名解析
+        3) 指定域名失败 -> 依次换用 parse_pool 中其他域名
+        """
+        line_key = (play_id or '').strip()
+        plist = self.get_player_list()
+        cfg = plist.get(line_key)
+
+        if cfg is None:
+            self._log(f'未知播放源 {line_key!r}, 直接按地址返回')
+            return video_url
+
+        if str(cfg.get('ps', '0')) != '1':
+            # ps=0: 站点播放器直接使用该地址, 无需二次解析
+            return video_url
+
+        preferred = self.parse_map.get(line_key) or cfg.get('parse', '')
+        if not preferred:
+            self._log(f'{line_key} 标记为需解析但未给解析域名')
+            return video_url
+
+        # 指定域名优先, 其后按 parse_pool 顺序重试
+        first = preferred.split('/player')[0].rstrip('/')
+        candidates = [first] + [d for d in self.parse_pool if d.rstrip('/') != first]
+
+        now = time.time()
+        usable = [d for d in candidates
+                  if now - self._parse_bad.get(d.rstrip('/'), 0) >= self.PARSE_BAD_TTL]
+        skipped = [d for d in candidates if d not in usable]
+        if skipped:
+            self._log(f'{line_key} 跳过近期失效的解析域名: {skipped}')
+
+        errors = []
+        for dom in usable:
+            url, err = self._parse_with_domain(dom, video_url)
+            if url:
+                self._parse_bad.pop(dom.rstrip('/'), None)
+                return url
+            errors.append(err)
+            # 只有连接层面的失败才计入域名失效, 服务方明确拒绝(code!=200)不是域名故障
+            if '拒绝' not in (err or ''):
+                self._parse_bad[dom.rstrip('/')] = time.time()
+            self._log(f'{line_key} 解析失败: {err}')
+
+        raise RuntimeError('; '.join(errors))
 
     def playerContent(self, flag, id, vipFlags):
         play_url = id or ''
+        if '$' in str(id):
+            play_path = str(id).split('$')[-1]
+        else:
+            play_path = str(id)
         try:
-            if '$' in str(id):
-                play_path = str(id).split('$')[-1]
-            else:
-                play_path = str(id)
-
             if play_path.startswith('http') and ('.m3u8' in play_path or '.mp4' in play_path):
                 return {"parse": 0, "url": play_path, "header": self._headers()}
 
@@ -733,15 +899,16 @@ class Spider(BaseSpider):
 
             html = self._fetch(play_url)
             if not html:
-                return {"parse": 0, "url": "", "msg": "播放页获取失败"}
+                raise RuntimeError('播放页获取失败')
 
-            video_url, play_id = '', ''
+            video_url, play_id, encrypt = '', '', '0'
             m = re.search(r'player_aaaa=(.*?)</script>', html, re.S)
             if m:
                 try:
                     pd = json.loads(m.group(1))
                     video_url = pd.get('url', '') or ''
                     play_id = pd.get('from', '') or ''
+                    encrypt = str(pd.get('encrypt', '0'))
                 except Exception:
                     pass
             if not video_url:
@@ -761,7 +928,15 @@ class Spider(BaseSpider):
                 if m5:
                     video_url = m5.group(1)
             if not video_url:
-                return {"parse": 0, "url": "", "msg": "未找到视频地址"}
+                raise RuntimeError('未找到视频地址')
+
+            # encrypt: 1=unescape, 2=unescape(base64decode), 站点 player.js 的处理方式
+            if encrypt == '1':
+                video_url = urllib.parse.unquote(video_url)
+            elif encrypt == '2':
+                video_url = urllib.parse.unquote(
+                    base64.b64decode(video_url + '=' * (-len(video_url) % 4)).decode('utf-8', 'ignore')
+                )
 
             if video_url.startswith('http') and ('.m3u8' in video_url or '.mp4' in video_url):
                 return {"parse": 0, "url": video_url, "header": self._headers(referer=self.base_url)}
@@ -769,8 +944,76 @@ class Spider(BaseSpider):
             final_url = self._resolve_video_url(video_url, play_id)
             return {"parse": 0, "url": final_url, "header": self._headers(referer=self.base_url)}
         except Exception as e:
-            self._log('playerContent 异常', e)
-            return {"parse": 1, "url": play_url, "msg": str(e)}
+            first_err = str(e)
+            self._log('playerContent 异常', first_err)
+
+        # 播放页或解析失败: 先尝试同一集的其它线路
+        alt = self._play_alternate(play_path, flag) if self._alt_depth < 2 else None
+        if alt:
+            self._log(f'线路 {flag} 失败, 已回落到 {alt[0]} 同一集')
+            return {"parse": 0, "url": alt[1], "header": self._headers(referer=self.base_url)}
+
+        # 兜底: 返回空地址并带上原因, 让宿主给出提示而不是挂起一个加载不出的 WebView
+        return {"parse": 0, "url": "", "msg": first_err}
+
+    @staticmethod
+    def _ep_no(text):
+        """从集名或集标识里取出集号数字
+        详情页集名有 集1 / 集01 / 第01集 / 01 等写法, 统一成不含前导零的数字串
+        """
+        m = re.search(r'\d+', str(text))
+        if not m:
+            return str(text).strip()
+        return m.group(0).lstrip('0') or '0'
+
+    def _play_alternate(self, play_path, flag):
+        """在同一部影片的其它线路里找同一集, 依次尝试
+        依赖 detailContent 建立的 _ep_map; 返回 (线路, 播放地址) 或 None
+        """
+        if play_path.startswith('http'):
+            # 已经是绝对地址时从路径里取集标识
+            murl = re.search(r'/play/([0-9A-Za-z\-]+)\.html', play_path)
+            if not murl:
+                return None
+            ep_token = murl.group(1)
+        else:
+            ep_token = play_path
+        if ep_token.startswith('/play/'):
+            ep_token = ep_token[len('/play/'):]
+        ep_token = ep_token.replace('.html', '').strip()
+        m = re.match(r'^(\d+)-', ep_token)
+        vid = m.group(1) if m else None
+
+        ep_map = self._ep_map.get(vid) if vid else None
+        if not ep_map:
+            return None
+
+        # 集号取路径末段, 详情页里的集名写法有 集1 / 集01 / 第01集 等, 统一按数字比对
+        nid = self._ep_no(ep_token.rsplit('-', 1)[-1])
+        cands = None
+        for title, entries in ep_map.items():
+            if self._ep_no(title) == nid:
+                cands = entries
+                break
+        if not cands:
+            return None
+
+        for line, token in cands:
+            if line == flag or token == ep_token:
+                continue
+            self._alt_depth += 1
+            try:
+                res = self.playerContent(line, token, None)
+            except Exception as e:
+                self._log(f'回落线路 {line} 异常', e)
+                continue
+            finally:
+                self._alt_depth -= 1
+            url = (res or {}).get('url') or ''
+            if res.get('parse') == 0 and ('.m3u8' in url or '.mp4' in url):
+                return line, url
+            self._log(f'回落线路 {line} 也不可用: {url[:40]!r}')
+        return None
 
     # ----------------------------------------------------------
     # 其余必须接口

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-光厂 VJshi Spider v1.3
-修复：分类无法加载 / 播放
+光厂 VJshi Spider v1.4
+修复：分类列表解析（新版 video-card 结构）/ 播放
 - 纯 Python 过 acw_sc__v2
 - 识别阿里云滑动验证，支持 extend 注入 Cookie
 - 加强列表与 MP4 解析
@@ -68,7 +68,7 @@ class Spider(BaseSpider):
         self.userAgent = (
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
             'AppleWebKit/537.36 (KHTML, like Gecko) '
-            'Chrome/122.0.0.0 Safari/537.36'
+            'Chrome/131.0.0.0 Safari/537.36'
         )
         self._cookie = ''
         self._extra_cookie = ''
@@ -158,11 +158,11 @@ class Spider(BaseSpider):
             if requests is not None:
                 r = requests.get(
                     url, headers=self._headers(with_cookie),
-                    timeout=18, allow_redirects=True,
+                    timeout=20, allow_redirects=True,
                 )
                 return r.text or ''
             req = urllib.request.Request(url, headers=self._headers(with_cookie))
-            resp = urllib.request.urlopen(req, timeout=18)
+            resp = urllib.request.urlopen(req, timeout=20)
             return self._decode_body(resp.read())
         except Exception as e:
             print('raw_get error:', url, e)
@@ -221,8 +221,10 @@ class Spider(BaseSpider):
                 print('parse_list: 阿里云滑动验证，请在 extend 注入浏览器 Cookie')
             return videos
         seen = set()
+
+        # 新版 video-card：href="/watch/ID.html?..." 后跟 img src + alt
         re_card = re.compile(
-            r'href="(/watch/(\d+)\.html)[^"]*"[\s\S]{0,2000}?'
+            r'href="(/watch/(\d+)\.html)[^"]*"[\s\S]{0,2500}?'
             r'<img[^>]+(?:src|data-src|data-original)="([^"]+)"[^>]*(?:alt="([^"]*)")?',
             re.I,
         )
@@ -231,13 +233,31 @@ class Spider(BaseSpider):
             if vid in seen:
                 continue
             seen.add(vid)
-            title = (m.group(4) or '').strip() or ('素材 #%s' % vid)
+            pic = m.group(3) or ''
+            if pic.startswith('data:'):
+                near = html[m.start():m.start() + 2500]
+                pm = re.search(r'(?:src|data-src)="(https?://[^"]+)"', near)
+                if pm:
+                    pic = pm.group(1)
+            title = (m.group(4) or '').strip()
+            if not title:
+                near = html[m.start():m.start() + 3000]
+                tm = re.search(r'alt="([^"]{2,120})"', near)
+                if tm:
+                    title = tm.group(1).strip()
+            if not title:
+                near = html[m.start():m.start() + 3500]
+                tm = re.search(r'>([^<]{2,80})</(?:h[1-6]|a|span|p)>', near)
+                if tm:
+                    title = tm.group(1).strip()
             videos.append({
                 'vod_id': vid,
-                'vod_name': title[:100],
-                'vod_pic': self._abs(m.group(3)),
+                'vod_name': (title or ('素材 #%s' % vid))[:100],
+                'vod_pic': self._abs(pic),
                 'vod_remarks': '',
             })
+
+        # 反向：img 在前
         if len(videos) < 6:
             re2 = re.compile(
                 r'<img[^>]+(?:src|data-src)="([^"]+)"[^>]*(?:alt="([^"]*)")?'
@@ -256,15 +276,26 @@ class Spider(BaseSpider):
                     'vod_pic': self._abs(m.group(1)),
                     'vod_remarks': '',
                 })
+
+        # 兜底：仅链接
         if len(videos) < 6:
-            for m in re.finditer(r'href="(/watch/(\d+)\.html)[^"]*"', html):
-                vid = m.group(2)
+            for m in re.finditer(r'href="/watch/(\d+)\.html', html):
+                vid = m.group(1)
                 if vid in seen:
                     continue
                 seen.add(vid)
+                near = html[max(0, m.start() - 50):m.start() + 1200]
+                title = ''
+                tm = re.search(r'alt="([^"]{2,100})"', near)
+                if tm:
+                    title = tm.group(1).strip()
+                if not title:
+                    tm = re.search(r'>([^<]{2,80})</(?:h\d|a|span|div)>', near)
+                    if tm:
+                        title = tm.group(1).strip()
                 videos.append({
                     'vod_id': vid,
-                    'vod_name': '素材 #%s' % vid,
+                    'vod_name': (title or ('素材 #%s' % vid))[:100],
                     'vod_pic': '',
                     'vod_remarks': '',
                 })
@@ -348,7 +379,7 @@ class Spider(BaseSpider):
         seen = set()
         for m in re.finditer(r'https?://[^"\'\s<>\\]+\.mp4[^"\'\s<>\\]*', html or '', re.I):
             u = m.group(0).replace('\\/', '/').rstrip('\\\'";')
-            if u in seen:
+            if u in seen or 'blob:' in u:
                 continue
             seen.add(u)
             label = '预览'
@@ -357,6 +388,8 @@ class Spider(BaseSpider):
             elif 'mp4.vjshi' in u or 'hmp4' in u:
                 label = '高清预览'
             play_parts.append('%s$%s' % (label, u))
+        # 优先高清
+        play_parts.sort(key=lambda x: 0 if '高清' in x else (1 if '低清' in x else 2))
         return play_parts
 
     def detailContent(self, ids):
@@ -463,4 +496,6 @@ if __name__ == '__main__':
     r = spider.categoryContent('shipinsucai', 1, False, {})
     print('list', len(r.get('list') or []))
     if r.get('list'):
-        print('first', r['list'][0].get('vod_name'))
+        print('first', r['list'][0].get('vod_name'), r['list'][0].get('vod_pic')[:60])
+        d = spider.detailContent([r['list'][0]['vod_id']])
+        print('detail play', d['list'][0].get('vod_play_url', '')[:120] if d.get('list') else None)

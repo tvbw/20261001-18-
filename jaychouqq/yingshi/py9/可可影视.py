@@ -1,10 +1,6 @@
-#coding=utf-8
+# coding=utf-8
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-TVBox / 影视仓  Python源脚本
-站点: 可可影视 (103.51.147.112:51120)
-"""
 
 import sys
 import re
@@ -15,11 +11,23 @@ from pyquery import PyQuery as pq
 sys.path.append('..')
 from base.spider import Spider
 
+def format_remarks(brand="蝴蝶影视", meta=""):
+    clean_meta = str(meta or "").strip()
+    clean_meta = re.sub(r"[\r\n\t]+", " ", clean_meta).strip()
+    if clean_meta:
+        return f"{brand} | {clean_meta}"
+    return brand
+
 class Spider(Spider):
 
     def __init__(self):
         super().__init__()
         self.site = 'https://103.51.147.112:51120'
+        self.imgCdn = 'https://vres.esadj.com'
+        self.tgGroup = 'https://t.me/tvshare23'
+        self.brandActor = '🦋 TG群: @tvshare23'
+        self.brandDirector = '🦋 蝴蝶影视'
+
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -32,20 +40,43 @@ class Spider(Spider):
             '综艺纪录': '4',
             '短剧': '6'
         }
-        # 隐晦的站点标识
-        self._mark = chr(26143) + chr(27827)
 
     def init(self, extend=""):
         pass
 
     def getName(self):
-        return "可可影视"
+        return "可可影视·蝴蝶版"
 
     def isVideoFormat(self, url):
         pass
 
     def manualVideoCheck(self):
         pass
+
+    def _get_clean_title(self, item):
+        titles = item.find('.v-item-title')
+        for j in range(len(titles)):
+            elem = titles.eq(j)
+            style = elem.attr('style') or ''
+            if 'display: none' in style or 'display:none' in style:
+                continue
+            t = elem.text().strip()
+            if t and 'kekys.com' not in t:
+                return t
+        return ''
+
+    def _get_clean_pic(self, item):
+        pic = ''
+        imgs = item.find('img')
+        for j in range(len(imgs)):
+            img = imgs.eq(j)
+            src = img.attr('data-original') or img.attr('src') or ''
+            if src and 'placeholder' not in src and 'logo_placeholder' not in src:
+                pic = src
+                break
+        if pic and pic.startswith('/'):
+            pic = self.imgCdn + pic
+        return pic
 
     def homeContent(self, filter):
         result = {'class': [], 'filters': {}, 'list': [], 'parse': 0, 'jx': 0}
@@ -73,28 +104,9 @@ class Spider(Spider):
                     continue
                 seen.add(vid)
 
-                # 标题
-                titles = item.find('.v-item-title')
-                title = ''
-                for j in range(len(titles)):
-                    t = titles.eq(j).text().strip()
-                    if t and t != '可可影视-kekys.com':
-                        title = t
-                        break
+                title = self._get_clean_title(item)
+                pic = self._get_clean_pic(item)
 
-                # 图片
-                pic = ''
-                imgs = item.find('img')
-                for j in range(len(imgs)):
-                    img = imgs.eq(j)
-                    src = img.attr('data-original') or ''
-                    if src and 'placeholder' not in src and 'logo_placeholder' not in src:
-                        pic = src
-                        break
-                if pic and pic.startswith('/'):
-                    pic = 'https://vres.zyxpedu.com' + pic
-
-                # 备注
                 note = ''
                 bottom = item.find('.v-item-bottom span')
                 if bottom.length:
@@ -105,7 +117,8 @@ class Spider(Spider):
                         'vod_id': vid,
                         'vod_name': title,
                         'vod_pic': pic,
-                        'vod_remarks': note
+                        'vod_remarks': format_remarks("蝴蝶影视", note),
+                        'style': {'type': 'rect', 'ratio': 0.75}
                     })
         except Exception as e:
             print(f'homeVideoContent error: {e}')
@@ -127,28 +140,9 @@ class Spider(Spider):
                 if not vid:
                     continue
 
-                # 标题
-                titles = item.find('.v-item-title')
-                title = ''
-                for j in range(len(titles)):
-                    t = titles.eq(j).text().strip()
-                    if t and t != '可可影视-kekys.com':
-                        title = t
-                        break
+                title = self._get_clean_title(item)
+                pic = self._get_clean_pic(item)
 
-                # 图片
-                pic = ''
-                imgs = item.find('img')
-                for j in range(len(imgs)):
-                    img = imgs.eq(j)
-                    src = img.attr('data-original') or ''
-                    if src and 'placeholder' not in src and 'logo_placeholder' not in src:
-                        pic = src
-                        break
-                if pic and pic.startswith('/'):
-                    pic = 'https://vres.zyxpedu.com' + pic
-
-                # 备注
                 note = ''
                 bottom = item.find('.v-item-bottom span')
                 if bottom.length:
@@ -159,7 +153,8 @@ class Spider(Spider):
                         'vod_id': vid,
                         'vod_name': title,
                         'vod_pic': pic,
-                        'vod_remarks': note
+                        'vod_remarks': format_remarks("蝴蝶影视", note),
+                        'style': {'type': 'rect', 'ratio': 0.75}
                     })
         except Exception as e:
             print(f'categoryContent error: {e}')
@@ -181,39 +176,32 @@ class Spider(Spider):
             r.encoding = 'utf-8'
             html = r.text
 
-            # 标题：从title标签提取，最可靠
             title = ''
             title_match = re.search(r'<title>(.+?)</title>', html)
             if title_match:
                 title = title_match.group(1).split('-')[0].strip()
-                # 去掉特殊字符水印
                 title = re.sub(r'[𝕜𝕜𝕪𝕤𝟘𝟙𝕔𝕠𝕞.\s]+', ' ', title).strip()
                 title = re.sub(r'\s+', ' ', title).strip()
 
-            # 图片：从og:image提取
             pic = ''
             og_img = re.search(r'<meta\s+property="og:image"\s+content="([^"]+)"', html)
             if og_img:
                 pic = og_img.group(1)
                 if pic.startswith('/'):
-                    pic = 'https://vres.zyxpedu.com' + pic
+                    pic = self.imgCdn + pic
 
-            # 简介：从meta description提取
             desc = ''
             desc_match = re.search(r'<meta\s+name="description"\s+content="([^"]+)"', html)
             if desc_match:
                 desc = desc_match.group(1).strip()
 
-            # 播放线路和集数
             play_from = []
             play_url = []
             episodes_by_sid = {}
             sids_in_order = []
             seen_sids = set()
 
-            # 纯正则提取所有播放链接
-            all_play = re.findall(r'<a[^>]+href="(/play/\d+-(\d+)-(\d+)\.html)"[^>]+class="episode-item"[^>]*>(.*?)</a>', html, re.DOTALL)
-            # 如果没匹配到，试试class在href前面的情况
+            all_play = re.findall(r'<a[^>]+href="(/play/\d+-(\d+)-(\d+)\.html)"[^>]*class="episode-item"[^>]*>(.*?)</a>', html, re.DOTALL)
             if not all_play:
                 all_play = re.findall(r'<a[^>]+class="episode-item"[^>]+href="(/play/\d+-(\d+)-(\d+)\.html)"[^>]*>(.*?)</a>', html, re.DOTALL)
             for href, sid, nid, link_html in all_play:
@@ -227,7 +215,6 @@ class Spider(Spider):
                     seen_sids.add(sid)
                     sids_in_order.append(sid)
 
-            # 线路名称
             source_labels = []
             all_labels = re.findall(r'class="source-item-label"[^>]*>([^<]+)</', html)
             for label in all_labels:
@@ -241,11 +228,16 @@ class Spider(Spider):
                         line_name = source_labels[i]
                     else:
                         line_name = f'线路{sid}'
-                    # 跳过4K线路（只有APP端能用）
                     if line_name == '4K':
                         continue
                     play_from.append(line_name)
                     play_url.append('#'.join(episodes_by_sid[sid]))
+
+            full_desc = (
+                f"【🔥 官方交流群: {self.tgGroup}】\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"{desc}"
+            )
 
             vod = {
                 'vod_id': vid,
@@ -254,10 +246,10 @@ class Spider(Spider):
                 'type_name': '',
                 'vod_year': '',
                 'vod_area': '',
-                'vod_remarks': '',
-                'vod_actor': '',
-                'vod_director': self._mark,
-                'vod_content': desc,
+                'vod_remarks': '蝴蝶影视',
+                'vod_actor': self.brandActor,
+                'vod_director': self.brandDirector,
+                'vod_content': full_desc,
                 'vod_play_from': '$$$'.join(play_from) if play_from else '',
                 'vod_play_url': '$$$'.join(play_url) if play_url else ''
             }
@@ -277,13 +269,11 @@ class Spider(Spider):
             r.encoding = 'utf-8'
 
             video_url = ''
-            
             patterns = [
                 r'src:\s*["\']([^"\']+\.(m3u8|mp4)[^"\']*)["\']',
                 r'"url"\s*:\s*"([^"]+\.(m3u8|mp4)[^"]*)"',
                 r"url\s*:\s*'([^']+\.(m3u8|mp4)[^']*)'",
             ]
-            
             for pat in patterns:
                 m = re.search(pat, r.text, re.DOTALL)
                 if m:
@@ -332,7 +322,6 @@ class Spider(Spider):
         result = {'list': [], 'parse': 0, 'jx': 0}
         page = int(pg) if pg else 1
         try:
-            # 先访问搜索页获取token
             search_url = f'{self.site}/search?k={quote(key)}'
             r = self.session.get(search_url, timeout=15, verify=False)
             r.encoding = 'utf-8'
@@ -354,7 +343,6 @@ class Spider(Spider):
                 if not vid:
                     continue
 
-                # 标题
                 title = ''
                 title_elem = item.find('.title')
                 if title_elem.length:
@@ -365,24 +353,15 @@ class Spider(Spider):
                         title = img.attr('alt') or img.attr('title') or ''
                         title = title.strip()
 
-                # 图片
-                pic = ''
-                imgs = item.find('img')
-                for j in range(len(imgs)):
-                    img = imgs.eq(j)
-                    src = img.attr('data-original') or img.attr('src') or ''
-                    if src and 'placeholder' not in src and 'logo_placeholder' not in src:
-                        pic = src
-                        break
-                if pic and pic.startswith('/'):
-                    pic = 'https://vres.zyxpedu.com' + pic
+                pic = self._get_clean_pic(item)
 
                 if title:
                     result['list'].append({
                         'vod_id': vid,
                         'vod_name': title,
                         'vod_pic': pic,
-                        'vod_remarks': ''
+                        'vod_remarks': '蝴蝶影视',
+                        'style': {'type': 'rect', 'ratio': 0.75}
                     })
         except Exception as e:
             print(f'searchContent error: {e}')

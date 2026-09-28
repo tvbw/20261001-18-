@@ -1,17 +1,2 @@
-/*.json
-  Cache-Control: public, max-age=86400, must-revalidate
-
-/*.jar
-  Cache-Control: public, max-age=86400, must-revalidate
-
-/*.txt
-  Cache-Control: public, max-age=86400, must-revalidate
-
-/*.py
-  Cache-Control: public, max-age=86400, must-revalidate
-
-/*.js
-  Cache-Control: public, max-age=86400, must-revalidate
-
 /img/*
   Cache-Control: public, max-age=31536000, immutable

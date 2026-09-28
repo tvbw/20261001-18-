@@ -7037,6 +7037,7 @@ TV Arbëria 3 Fëmijë,
 ЭлТР Билим Илим,
 FilmRise Anime,
 Nick HD+,
+Freeform,
 
 音乐,#genre#
 MTV Live,
@@ -7522,6 +7523,7 @@ M Sign Media,
 Malabar News,
 Zee Malayalam News,
 Rada TV,
+MS NOW,
 
 财经,#genre#
 央视财经,
