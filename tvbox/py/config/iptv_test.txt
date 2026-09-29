@@ -6901,6 +6901,7 @@ Alkass Two,
 Star Sports 1,
 Alkass Three,
 CazeTV (1080i),
+NFL Network,
 
 少儿,#genre#
 央视少儿,
