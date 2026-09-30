@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Vimeo
-JWT: https://vimeo.com/_next/viewer
-列表: api.vimeo.com
-播放: player.vimeo.com/video/{id}/config 或 embed 页 playerConfig
-清晰度: progressive + 解析 HLS master playlist
+Vimeo 爬虫 — 修复无播放地址 + 多清晰度选择
+优先从 player embed 页提取 playerConfig（/config 常 403）
 """
 import json
 import re
@@ -88,14 +85,17 @@ class Spider(BaseSpider):
             }
         try:
             if requests:
-                resp = requests.get(url, headers=headers, params=params, timeout=20)
-                resp.raise_for_status()
+                resp = requests.get(url, headers=headers, params=params, timeout=20, verify=False)
                 return resp
             full = url
             if params:
                 full += ('&' if '?' in url else '?') + urllib.parse.urlencode(params, doseq=True)
             from urllib.request import Request, urlopen
-            raw = urlopen(Request(full, headers=headers), timeout=20).read()
+            import ssl
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            raw = urlopen(Request(full, headers=headers), timeout=20, context=ctx).read()
 
             class R:
                 def __init__(self, raw):
@@ -116,6 +116,8 @@ class Spider(BaseSpider):
         if not resp:
             return {}
         try:
+            if hasattr(resp, 'status_code') and resp.status_code != 200:
+                return {}
             return resp.json()
         except Exception:
             return {}
@@ -145,6 +147,8 @@ class Spider(BaseSpider):
         except Exception:
             pass
         html = self.fetch_text(self.siteUrl + '/channels/staffpicks')
+        if not html:
+            html = self.fetch_text(self.siteUrl + '/')
         m = re.search(r'"jwt"\s*:\s*"([^"]+)"', html or '')
         if m:
             self.jwt = m.group(1)
@@ -294,137 +298,139 @@ class Spider(BaseSpider):
             'total': total or len(videos),
         }
 
-    def _extract_json_obj(self, text, marker):
-        """从 HTML 中按大括号匹配提取 JSON 对象"""
-        m = re.search(re.escape(marker) + r'\s*=\s*', text or '')
-        if not m:
+    # ---------- playerConfig 提取 ----------
+    def _extract_json_object(self, html, needle):
+        text = html or ''
+        i = text.find(needle)
+        if i < 0:
             return {}
-        start = m.end()
-        if start >= len(text) or text[start] != '{':
+        start = text.find('{', i)
+        if start < 0:
             return {}
         depth = 0
-        for i, c in enumerate(text[start:]):
-            if c == '{':
+        in_str = False
+        esc = False
+        for p in range(start, len(text)):
+            c = text[p]
+            if in_str:
+                if esc:
+                    esc = False
+                elif c == '\\':
+                    esc = True
+                elif c == '"':
+                    in_str = False
+                continue
+            if c == '"':
+                in_str = True
+            elif c == '{':
                 depth += 1
             elif c == '}':
                 depth -= 1
                 if depth == 0:
                     try:
-                        return json.loads(text[start:start + i + 1])
+                        return json.loads(text[start:p + 1])
                     except Exception:
                         return {}
         return {}
 
-    def _player_config(self, vid):
-        """优先 /config，失败则走 embed 页 playerConfig"""
-        headers = {
+    def _load_player_cfg(self, vid):
+        """优先 embed HTML 的 playerConfig（/config 常 403）"""
+        # 1) embed 页
+        html = self.fetch_text(self.player + vid, headers={
             'User-Agent': self.userAgent,
-            'Referer': self.siteUrl + '/' + str(vid),
-            'Accept': 'application/json',
-        }
-        cfg = self.fetch_json(self.player + str(vid) + '/config', headers=headers)
+            'Referer': self.siteUrl + '/' + vid,
+            'Accept': 'text/html,application/xhtml+xml',
+        })
+        cfg = self._extract_json_object(html, 'window.playerConfig')
+        if not cfg:
+            cfg = self._extract_json_object(html, 'playerConfig')
         if cfg.get('request'):
             return cfg
 
-        # 带 h 参数的 embed
-        js = self.api_get('/videos/' + str(vid))
-        embed = js.get('player_embed_url') or (self.player + str(vid))
-        h = re.search(r'[?&]h=([a-f0-9]+)', embed or '')
-        if h:
-            cfg = self.fetch_json(
-                self.player + str(vid) + '/config?h=' + h.group(1),
-                headers=headers,
-            )
+        # 2) /config API
+        cfg = self.fetch_json(self.player + vid + '/config', headers={
+            'User-Agent': self.userAgent,
+            'Referer': self.siteUrl + '/' + vid,
+            'Origin': 'https://player.vimeo.com',
+            'Accept': 'application/json',
+        })
+        if cfg.get('request'):
+            return cfg
+
+        # 3) api config_url / embed h=
+        info = self.api_get('/videos/' + vid, {'fields': 'config_url,player_embed_url'})
+        if info.get('config_url'):
+            cfg = self.fetch_json(info['config_url'], headers={
+                'User-Agent': self.userAgent,
+                'Referer': self.siteUrl + '/' + vid,
+            })
             if cfg.get('request'):
                 return cfg
+        embed = info.get('player_embed_url') or ''
+        hm = re.search(r'[?&]h=([a-f0-9]+)', embed)
+        if hm:
+            cfg = self.fetch_json(self.player + vid + '/config?h=' + hm.group(1), headers={
+                'User-Agent': self.userAgent,
+                'Referer': self.siteUrl + '/' + vid,
+                'Accept': 'application/json',
+            })
+            if cfg.get('request'):
+                return cfg
+        return {}
 
-        html = self.fetch_text(embed, headers={
-            'User-Agent': self.userAgent,
-            'Referer': self.siteUrl + '/' + str(vid),
-            'Accept': 'text/html',
-        })
-        cfg = self._extract_json_obj(html, 'playerConfig')
-        if not cfg:
-            cfg = self._extract_json_obj(html, 'window.playerConfig')
-        return cfg or {}
+    def _resolve_url(self, base, rel):
+        if not rel:
+            return ''
+        if re.match(r'^https?://', rel, re.I):
+            return rel
+        return urllib.parse.urljoin(base, rel)
 
     def _parse_hls_master(self, master_url):
-        """解析 HLS 主列表，返回 [(height, url), ...] 高在前"""
-        headers = {
+        text = self.fetch_text(master_url, headers={
             'User-Agent': self.userAgent,
             'Referer': self.siteUrl + '/',
-        }
-        text = self.fetch_text(master_url, headers=headers)
-        if not text or text.startswith('<!'):
+            'Accept': '*/*',
+        })
+        if not text or text[:1] == '<':
             return []
-        base = master_url.rsplit('/', 1)[0] + '/'
-        variants = []
         lines = text.splitlines()
+        out = []
+        seen_h = set()
         i = 0
         while i < len(lines):
             line = lines[i].strip()
             if line.startswith('#EXT-X-STREAM-INF:'):
-                h = 0
-                m = re.search(r'RESOLUTION=\d+x(\d+)', line)
-                if m:
-                    h = int(m.group(1))
-                # next non-empty non-tag line is uri
+                hm = re.search(r'RESOLUTION=\d+x(\d+)', line)
+                h = int(hm.group(1)) if hm else 0
                 j = i + 1
                 while j < len(lines) and (not lines[j].strip() or lines[j].strip().startswith('#')):
                     j += 1
                 if j < len(lines):
                     uri = lines[j].strip()
                     if uri and not uri.startswith('#'):
-                        if not uri.startswith('http'):
-                            uri = urllib.parse.urljoin(base, uri)
-                        variants.append((h, uri))
-                i = j
+                        if h not in seen_h:
+                            seen_h.add(h)
+                            out.append({'height': h, 'url': self._resolve_url(master_url, uri)})
+                        i = j
             i += 1
-        variants.sort(key=lambda x: x[0], reverse=True)
-        # 去重 height
-        seen, out = set(), []
-        for h, u in variants:
-            key = h or u
-            if key in seen:
-                continue
-            seen.add(key)
-            out.append((h, u))
+        out.sort(key=lambda x: x.get('height') or 0, reverse=True)
         return out
 
     def _collect_qualities(self, cfg):
-        """返回 [(label, url), ...]，高清晰度优先"""
+        """返回 [(label, url), ...] — 优先 HLS（播放器兼容更好），再 progressive"""
         result = []
         seen = set()
         files = ((cfg or {}).get('request') or {}).get('files') or {}
 
-        # 1) progressive MP4
-        prog = files.get('progressive') or []
-        prog = sorted(
-            [p for p in prog if isinstance(p, dict) and p.get('url')],
-            key=lambda x: int(x.get('height') or 0),
-            reverse=True,
-        )
-        for p in prog:
-            h = int(p.get('height') or 0)
-            label = (p.get('quality') or (str(h) + 'p' if h else 'MP4')).upper()
-            if not label.endswith('P') and h:
-                label = str(h) + 'p'
-            url = p.get('url')
-            if url and url not in seen:
-                seen.add(url)
-                result.append((label, url))
-
-        # 2) HLS master + 分档
+        # 1) HLS master + 分档（优先）
         hls = files.get('hls') or {}
-        master = ''
         cdns = hls.get('cdns') or {}
-        preferred = hls.get('default_cdn')
+        preferred = hls.get('default_cdn') or ''
         order = ([preferred] if preferred else []) + list(cdns.keys())
+        master = ''
         for name in order:
-            if not name or name not in cdns:
-                continue
-            item = cdns.get(name) or {}
-            master = item.get('url') or item.get('avc_url') or ''
+            node = cdns.get(name) or {}
+            master = node.get('url') or node.get('avc_url') or node.get('av1_url') or ''
             if master:
                 break
         if not master:
@@ -432,30 +438,42 @@ class Spider(BaseSpider):
 
         if master:
             variants = self._parse_hls_master(master)
-            if variants:
-                for h, u in variants:
-                    label = ('%sp' % h) if h else 'HLS'
-                    if u not in seen:
-                        seen.add(u)
-                        result.append((label, u))
-            # 自适应总表
+            for v in variants:
+                u = v.get('url')
+                if not u or u in seen:
+                    continue
+                seen.add(u)
+                h = int(v.get('height') or 0)
+                result.append(('%dp' % h if h else 'HLS', u))
             if master not in seen:
                 seen.add(master)
                 result.append(('自适应', master))
 
-        # 3) DASH 兜底
+        # 2) progressive MP4 兜底
+        prog = [p for p in (files.get('progressive') or []) if p and p.get('url')]
+        prog.sort(key=lambda x: int(x.get('height') or 0), reverse=True)
+        for p in prog:
+            u = p.get('url')
+            if not u or u in seen:
+                continue
+            seen.add(u)
+            h = int(p.get('height') or 0)
+            label = '%dp-MP4' % h if h else 'MP4'
+            result.append((label, u))
+
+        # 3) DASH
         if not result:
             dash = files.get('dash') or {}
-            for item in (dash.get('cdns') or {}).values():
-                u = (item or {}).get('url') or (item or {}).get('avc_url') or ''
-                if u and u not in seen:
+            for node in (dash.get('cdns') or {}).values():
+                u = (node or {}).get('url') or (node or {}).get('avc_url') or ''
+                if u:
                     result.append(('DASH', u))
                     break
-
         return result
 
     def detailContent(self, ids):
         vid = str((ids or [''])[0]).split(':')[0]
+        vid = re.sub(r'\D', '', vid) or vid
         try:
             js = self.api_get('/videos/' + vid)
             if not js.get('name') and not js.get('uri'):
@@ -465,12 +483,13 @@ class Spider(BaseSpider):
             if isinstance(desc, str):
                 desc = re.sub(r'<[^>]+>', '', desc)[:600]
 
-            cfg = self._player_config(vid)
+            cfg = self._load_player_cfg(vid)
             qualities = self._collect_qualities(cfg)
             if qualities:
-                play_url = '#'.join('%s$%s' % (lab, url) for lab, url in qualities)
+                # 存 label$vid@@label，播放时重新取流（避免 progressive/HLS 签名过期）
+                play_url = '#'.join(['%s$%s@@%s' % (n, vid, n) for n, u in qualities])
             else:
-                play_url = '正片$%s' % vid
+                play_url = '正片$%s@@auto' % vid
 
             return {
                 'list': [{
@@ -502,25 +521,45 @@ class Spider(BaseSpider):
             'Referer': self.siteUrl + '/',
             'Origin': self.siteUrl,
         }
-        play_id = str(id or '')
-        if play_id.startswith('http') and self.isVideoFormat(play_id):
-            return {'parse': 0, 'jx': '0', 'url': play_id, 'header': header}
-        if play_id.startswith('http'):
-            return {'parse': 0, 'jx': '0', 'url': play_id, 'header': header}
+        play_id = str(id or '').strip()
+        want = ''
+        # id 形如 133697756@@1080p 或旧直链
+        if '@@' in play_id:
+            left, want = play_id.split('@@', 1)
+            play_id = left
+        if play_id.startswith('http') and ('vimeocdn.com' in play_id or self.isVideoFormat(play_id)):
+            # 旧缓存直链可能过期，尽量从 URL 反推 vid 再刷新
+            m = re.search(r'/(\d{6,})/', play_id)
+            if m:
+                play_id = m.group(1)
+            else:
+                return {'parse': 0, 'jx': 0, 'url': play_id, 'header': header}
 
-        vid = play_id.split('|')[0].split(':')[0]
+        vid = re.sub(r'\D', '', play_id.split('|')[0].split(':')[0].split('$')[-1]) or play_id
+        fl = str(want or flag or '')
         try:
-            cfg = self._player_config(vid)
+            cfg = self._load_player_cfg(vid)
             qualities = self._collect_qualities(cfg)
             if qualities:
-                # 默认最高清
-                return {'parse': 0, 'jx': '0', 'url': qualities[0][1], 'header': header}
+                chosen = qualities[0][1]
+                for name, url in qualities:
+                    if not fl or fl in ('auto', '正片', '默认'):
+                        chosen = url
+                        break
+                    if fl == name or fl in name or name.replace('-MP4', '') == fl.replace('-MP4', ''):
+                        chosen = url
+                        break
+                # HLS 用标准头；progressive 去掉 Origin 更稳
+                h = dict(header)
+                if '.mp4' in chosen and 'vimeocdn.com' in chosen:
+                    h.pop('Origin', None)
+                return {'parse': 0, 'jx': 0, 'url': chosen, 'header': h}
         except Exception as e:
             print('获取播放内容失败: %s' % e)
         return {
             'parse': 1,
-            'jx': '1',
-            'url': self.siteUrl + '/' + vid,
+            'jx': 1,
+            'url': self.siteUrl + '/' + str(vid),
             'header': header,
         }
 
@@ -528,11 +567,7 @@ class Spider(BaseSpider):
         if not url:
             return False
         u = url.lower()
-        if any(x in u for x in ('.m3u8', '.mp4', '.mpd', '.m4s')):
-            return True
-        if 'vimeocdn.com' in u or 'vimeo.com' in u:
-            return True
-        return False
+        return any(x in u for x in ('.m3u8', '.mp4', '.mpd', '.m4s', 'vimeocdn.com'))
 
     def manualVideoCheck(self):
         return False
@@ -544,13 +579,15 @@ class Spider(BaseSpider):
 if __name__ == '__main__':
     spider = Spider()
     spider.init()
-    print(json.dumps(spider.homeContent(True), ensure_ascii=False, indent=2))
-    r = spider.categoryContent('staffpicks', 1, {}, {})
-    print('list', len(r.get('list') or []))
-    if r.get('list'):
-        vid = r['list'][0]['vod_id']
+    print(json.dumps(spider.homeContent(True), ensure_ascii=False)[:200])
+    cat = spider.categoryContent('staffpicks', 1, False, {})
+    print('cat', len(cat.get('list') or []))
+    if cat.get('list'):
+        vid = cat['list'][0]['vod_id']
         d = spider.detailContent([vid])
-        print('name', d['list'][0]['vod_name'])
-        print('play_url', d['list'][0]['vod_play_url'][:300])
-        token = d['list'][0]['vod_play_url'].split('#')[0].split('$')[-1]
-        print(json.dumps(spider.playerContent('Vimeo', token, []), ensure_ascii=False)[:250])
+        item = (d.get('list') or [{}])[0]
+        print('name', item.get('vod_name'))
+        print('play_url', (item.get('vod_play_url') or '')[:200])
+        first = (item.get('vod_play_url') or '').split('#')[0].split('$')[-1]
+        p = spider.playerContent('1080p', first, [])
+        print('play', p.get('parse'), str(p.get('url'))[:90])

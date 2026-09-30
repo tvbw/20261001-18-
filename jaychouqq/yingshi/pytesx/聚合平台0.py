@@ -120,9 +120,9 @@ class Spider(BaseSpider):
                 ctx.check_hostname = False
                 ctx.verify_mode = ssl.CERT_NONE
                 req = urllib.request.Request(url, headers=self.headers)
-                with urllib.request.urlopen(req, timeout=12, context=ctx) as r:
+                with urllib.request.urlopen(req, timeout=6, context=ctx) as r:
                     return r.read().decode('utf-8', 'ignore')
-            r = requests.get(url, headers=self.headers, timeout=12, verify=False)
+            r = requests.get(url, headers=self.headers, timeout=6, verify=False)
             r.encoding = 'utf-8'
             return r.text if r.status_code == 200 else ''
         except Exception as e:
@@ -262,16 +262,14 @@ class Spider(BaseSpider):
         return vals
 
     def homeContent(self, filter):
+        # 只返回源列表，不逐个请求分类（否则 40+ 源会卡死加载）
         classes = []
         filters = {}
+        default_vals = [{'n': '全部(最新)', 'v': ''}]
         for sk, so in self.SOURCES.items():
             classes.append({'type_id': sk, 'type_name': so['name']})
-            try:
-                vals = self._load_filter(sk, so)
-            except Exception:
-                vals = [{'n': '全部(最新)', 'v': ''}]
-            filters[sk] = [{'key': 'cateId', 'name': '分类', 'value': vals}]
-        return {'class': classes, 'filters': filters}
+            filters[sk] = [{'key': 'cateId', 'name': '分类', 'value': list(default_vals)}]
+        return {'class': classes, 'filters': filters if filter else {}}
 
     def homeVideoContent(self):
         return {'list': []}
@@ -363,31 +361,58 @@ class Spider(BaseSpider):
 
     def searchContentPage(self, key, quick, pg=1):
         pg = int(pg or 1)
+        key = self._text(key)
+        if not key:
+            return {'list': [], 'page': pg, 'pagecount': 1, 'limit': 40, 'total': 0}
         result = []
         max_page = 1
-        for sk, so in self.SOURCES.items():
+        items = list(self.SOURCES.items())
+
+        def _one(sk_so):
+            sk, so = sk_so
             try:
                 stype = so.get('type') or 1
-                if stype == 3:
+                if stype in (0, 3):
                     url = self._build_url(so['api'], {'ac': 'videolist', 'wd': key, 'pg': pg})
+                elif stype == 2:
+                    url = self._build_url(so['api'], {'wd': key, 'pg': pg})
                 else:
                     url = self._build_url(so['api'], {'ac': 'detail', 'wd': key, 'pg': pg})
                 data = self._parse_response(self._request(url))
-                if stype != 3 and not data.get('list'):
+                if stype not in (0, 2, 3) and not data.get('list'):
                     data2 = self._parse_response(
                         self._request(self._build_url(so['api'], {'ac': 'videolist', 'wd': key, 'pg': pg}))
                     )
                     if data2.get('list'):
                         data = data2
+                lst = []
                 for it in (data.get('list') or []):
                     cleaned = self._clean_item(it, sk, so['name'], False)
                     cleaned['vod_pic'] = self._fix_pic(cleaned.get('vod_pic'))
-                    result.append(cleaned)
-                pc = int(data.get('pagecount') or 1)
-                if pc > max_page:
-                    max_page = pc
+                    lst.append(cleaned)
+                return lst, int(data.get('pagecount') or 1)
             except Exception as e:
                 print('search skip', sk, e)
+                return [], 1
+
+        try:
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+            with ThreadPoolExecutor(max_workers=8) as pool:
+                futs = [pool.submit(_one, it) for it in items]
+                for fut in as_completed(futs, timeout=25):
+                    try:
+                        lst, pc = fut.result()
+                        result.extend(lst)
+                        if pc > max_page:
+                            max_page = pc
+                    except Exception:
+                        pass
+        except Exception:
+            for it in items[:15]:
+                lst, pc = _one(it)
+                result.extend(lst)
+                if pc > max_page:
+                    max_page = pc
         return {
             'list': result,
             'page': pg,
