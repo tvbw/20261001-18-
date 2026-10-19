@@ -773,6 +773,26 @@
             "searchable": 1,
             "quickSearch": 1,
             "filterable": 1,
+            "ext": {
+                "site": [
+                    "https://4kzn.cc"
+                ]
+            },
+            "timeout": 60
+        },
+        {
+            "key": "小丑",
+            "name": "🍊小丑4K",
+            "type": 3,
+            "api": "csp_4KZhinan",
+            "searchable": 1,
+            "quickSearch": 1,
+            "filterable": 1,
+            "ext": {
+                "site": [
+                    "https://4kxc.com"
+                ]
+            },
             "timeout": 60
         },
         {
@@ -1502,22 +1522,22 @@
             "api": "./py/达达兔影视.py"
         },
         {
-            "key": "FoFo影院",
-            "name": "🌱FoFo影院",
+            "key": "风月影院",
+            "name": "🌙风月影院",
             "type": 3,
-            "api": "./py/FoFo影院🍀TG @hshsjk9.py"
+            "api": "./py/风月影院.py"
         },
         {
             "key": "飞快TV1",
             "name": "🕊️飞快TV1",
             "type": 3,
-            "api": "./py/飞快TV🍀TG @hshsjk9.py"
+            "api": "./py/飞快TV.py"
         },
         {
             "key": "大马猴影视",
             "name": "🐒大马猴影视",
             "type": 3,
-            "api": "./py/大马猴🍀TG @hshsjk9.py"
+            "api": "./py/大马猴影视.py"
         },
         {
             "key": "pomo影视",
