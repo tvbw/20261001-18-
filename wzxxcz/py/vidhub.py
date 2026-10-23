@@ -79,27 +79,32 @@ _SORTS = [
     {"n": "评分", "v": "score"},
 ]
 
-# 筛选地区/语言/类型均来自片库页真实链接
-_AREAS = ["", "大陆", "香港", "台湾", "美国", "法国", "英国", "日本", "韩国",
-          "德国", "泰国", "印度", "意大利", "西班牙", "加拿大", "其他"]
-_LANGS = ["", "国语", "英语", "粤语", "闽南语", "韩语", "日语", "法语",
-          "德语", "其它", "汉语普通话"]
+_LETTERS = [{"n": "全部", "v": ""}] + \
+           [{"n": x, "v": x} for x in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"] + \
+           [{"n": "0-9", "v": "0-9"}]
 
-# 各主分类下的真实子类型(/vodshow/1---类型)
-_CLASS_MAP = {
-    "1": ["喜剧", "爱情", "恐怖", "动作", "科幻", "剧情", "战争", "警匪",
-          "犯罪", "动画", "奇幻", "武侠", "冒险", "枪战", "悬疑", "惊悚",
-          "经典", "青春", "文艺", "微电影", "古装", "历史", "运动", "农村",
-          "儿童", "网络电影"],
-    "2": ["大陆", "香港", "台湾", "日本", "韩国", "欧美", "泰国", "印度",
-          "英国", "美国", "法国", "加拿大", "其他", "剧情", "喜剧", "爱情",
-          "古装", "奇幻", "武侠", "科幻", "悬疑", "战争", "历史", "都市"],
-    "3": ["大陆综艺", "港台综艺", "日韩综艺", "欧美综艺", "真人秀", "脱口秀",
-          "音乐", "舞蹈", "美食", "旅行", "游戏", "晚会"],
-    "4": ["国产动漫", "欧美动漫", "日韩动漫", "动漫电影", "热血", "搞笑",
-          "恋爱", "少女", "科幻", "治愈", "冒险", "校园"],
+# 筛选字典，按照真实网页结构精确构建
+_AREAS_ALL = ["大陆", "香港", "台湾", "美国", "法国", "英国", "日本", "韩国", "德国", "泰国", "印度", "意大利", "西班牙", "加拿大", "其他"]
+_LANGS_ALL = ["国语", "英语", "粤语", "闽南语", "韩语", "日语", "法语", "德语", "其它", "汉语普通话"]
+
+# 电影分类的子类别 (映射真实的type_id)
+_CLASS_MAP_MOVIE = {
+    "动作片": "6", "喜剧片": "7", "爱情片": "8", "科幻片": "9", "恐怖片": "10", 
+    "剧情片": "11", "战争片": "12", "犯罪片": "20", "惊悚片": "21", "冒险片": "22", 
+    "悬疑片": "23", "武侠片": "25", "奇幻片": "26", "纪录片": "30", "动画电影": "27"
 }
 
+# 剧集分类的子类别 (映射真实的type_id)
+_SUB_CLASS_MAP_TV = {
+    "内地剧": "13", "港台剧": "14", "日韩剧": "15", "欧美剧": "16", "泰国剧": "28", "短剧": "29"
+}
+
+# 综艺分类的子类别 (映射真实的type_id，此处假设根据综艺页面的类型，如果选访谈，真实分类ID应为3本身，因为在源码里综艺是总分类，访谈是子参数。但为了安全，我们直接使用参数3)
+# 在源码中，/vodshow/3---访谈--------2026.html 证明了综艺的总分类ID是3，访问它需要3，而类型是访谈
+_CLASS_MAP_VARIETY = ["选秀", "情感", "访谈", "播报", "旅游", "音乐", "美食", "纪实", "曲艺", "生活", "游戏互动", "财经", "求职"]
+
+# 动漫分类的子类别 (映射真实的type_id，同理，动漫总分类是4，子类型是参数)
+_CLASS_MAP_ANIME = ["情感", "科幻", "热血", "推理", "搞笑", "冒险", "萝莉", "校园", "动作", "机战", "运动", "战争", "少年", "少女", "社会", "原创", "亲子", "益智", "励志", "其他"]
 
 def _opt(values):
     return [{"n": "全部", "v": ""}] + [{"n": x, "v": x} for x in values]
@@ -108,17 +113,34 @@ def _opt(values):
 FILTERS = {}
 for c in CLASSES:
     tid = c["type_id"]
-    FILTERS[tid] = [
-        {"key": "class", "name": "类型", "value": _opt(_CLASS_MAP.get(tid, []))},
-        {"key": "area", "name": "地区", "value": _opt([a for a in _AREAS if a])},
-        {"key": "lang", "name": "语言", "value": _opt([x for x in _LANGS if x])},
+    filters = []
+    
+    if tid == "1":  # 电影
+        filters.append({"key": "subtype", "name": "电影类型", "value": _opt(list(_CLASS_MAP_MOVIE.keys()))})
+        filters.append({"key": "area", "name": "地区", "value": _opt(_AREAS_ALL)})
+        filters.append({"key": "lang", "name": "语言", "value": _opt(_LANGS_ALL)})
+    elif tid == "2":  # 连续剧
+        filters.append({"key": "subtype", "name": "剧集分类", "value": _opt(list(_SUB_CLASS_MAP_TV.keys()))})
+        filters.append({"key": "area", "name": "地区", "value": _opt(["内地", "韩国", "香港", "台湾", "日本", "美国", "泰国", "英国", "新加坡", "其他"])})
+        filters.append({"key": "lang", "name": "语言", "value": _opt(_LANGS_ALL)})
+    elif tid == "3":  # 综艺
+        filters.append({"key": "class", "name": "类型", "value": _opt(_CLASS_MAP_VARIETY)})
+        filters.append({"key": "area", "name": "地区", "value": _opt(["内地", "港台", "日韩", "欧美"])})
+        filters.append({"key": "lang", "name": "语言", "value": _opt(_LANGS_ALL)})
+    elif tid == "4":  # 动漫
+        filters.append({"key": "class", "name": "类型", "value": _opt(_CLASS_MAP_ANIME)})
+        filters.append({"key": "area", "name": "地区", "value": _opt(["国产", "日本", "欧美", "其他"])})
+        filters.append({"key": "lang", "name": "语言", "value": _opt(_LANGS_ALL)})
+        
+    filters.extend([
+        {"key": "letter", "name": "字母", "value": _LETTERS},
         {"key": "year", "name": "年份", "value": _YEARS},
         {"key": "sort", "name": "排序", "value": _SORTS},
-    ]
+    ])
+    FILTERS[tid] = filters
 
 
 # ===================== 正则 =====================
-# 列表卡片(module-item): pic链接 + 标题 + 封面 + 备注
 _RE_ITEM_START = re.compile(r'<div class="module-item">')
 _RE_DETAIL_HREF = re.compile(
     r'<div class="module-item-pic">\s*<a[^>]*href="(/voddetail/\d+\.html)"[^>]*'
@@ -134,20 +156,16 @@ _RE_TITLE_GEN = re.compile(r'<h1[^>]*>(.*?)</h1>', re.S | re.I)
 _RE_COVER = re.compile(r'<div class="video-cover">[\s\S]{0,800}?<img[^>]*?'
                        r'(?:data-src|data-original|src)="([^"]+)"', re.S)
 _RE_OG_IMG = re.compile(r'property="og:image"[^>]*content="([^"]+)"', re.I)
-# 信息行: 每个 <div class="video-info-items"> 以紧邻的下一个同级 items 切分
 _RE_INFO_ITEM = re.compile(
     r'<span class="video-info-itemtitle">([^<]*)：</span>'
     r'<div class="video-info-item[^"]*">(.*?)</div></div>', re.S)
 _RE_META_DESC = re.compile(
     r'<meta[^>]*name=["\']description["\'][^>]*content=["\']([^"\']*)["\']', re.I)
-# aux 标签区(类型/年份/地区)
 _RE_AUX = re.compile(r'class="video-info-aux[^"]*"[^>]*>(.*?)</div>\s*</div>',
                      re.S)
-# 播放节点 tab (线路名, 按出现顺序对应 sid=1..N)
 _RE_TAB_ITEM = re.compile(
     r'<div class="module-tab-item tab-item"[^>]*data-dropdown-value="([^"]+)"',
     re.S)
-# 每个播放列表 glist-N, 以下一个 glist 或选集播放区之后的模块为界
 _RE_GLIST_HEAD = re.compile(r'id="glist-(\d+)"')
 _RE_EP = re.compile(
     r'<a[^>]*href="(/vodplay/(\d+)-(\d+)-(\d+)\.html)"[^>]*>(.*?)</a>', re.S)
@@ -159,11 +177,9 @@ _RE_CONFIG_URL = re.compile(r'"url"\s*:\s*"([^"]+)"')
 
 
 def _parse_config_url(raw):
-    """解析 /player/ 返回页 config JSON 里的真实地址, 兼容 \\/ 转义。"""
     if not raw:
         return ""
     s = raw.strip()
-    # 先直接 json 片段
     m = re.search(r'var\s+config\s*=\s*(\{.*?\})\s*;', s, re.S)
     target = m.group(1) if m else s
     target = target.replace('\\/', '/')
@@ -243,13 +259,11 @@ class Spider(Spider):
         s = re.sub(r"\n{2,}", "\n", s)
         return s.strip()
 
-    # ============ 列表卡片解析 ============
     def _extract_videos(self, html):
         videos = []
         seen = set()
         if not html:
             return videos
-        # 以 module-item 切块, 规避卡片顺序/可选字段差异
         starts = [m.start() for m in _RE_ITEM_START.finditer(html)]
         for idx, st in enumerate(starts):
             ed = starts[idx + 1] if idx + 1 < len(starts) else st + 4000
@@ -278,7 +292,6 @@ class Spider(Spider):
             mi = _RE_IMG.search(block)
             if mi:
                 pic = mi.group(1)
-            # 丢掉懒加载占位图(百度 bkimg 占位)
             if "bkimg.cdn.bcebos.com" in pic or "loading" in pic:
                 pic = ""
                 mm = re.search(r'data-src="([^"]+)"', block)
@@ -299,7 +312,6 @@ class Spider(Spider):
         return videos
 
     def _max_page(self, html):
-        """片库页尾页: vodshow 12段中第8段(index=8)为页码"""
         nums = []
         for u in re.findall(r'/vodshow/([^"#\s]+\.html)', html):
             core = u[:-5] if u.endswith('.html') else u
@@ -308,7 +320,6 @@ class Spider(Spider):
                 nums.append(int(parts[8]))
         return max(nums) if nums else 1
 
-    # ============ TVBox 接口 ============
     def homeContent(self, filter=False):
         return {"class": CLASSES, "filters": FILTERS}
 
@@ -326,20 +337,43 @@ class Spider(Spider):
                 extend = {}
         extend = extend or {}
 
-        # vodshow 12 段: tid-地区-排序-类型-语言-字母---页码---年份
+        # --- 智能替换：如果选定了具体的子类型，将主分类ID转换为真实ID ---
+        real_tid = str(tid)
+        
+        if tid == "1" and extend.get("subtype"):
+            # 电影的主分类是1，如果选了具体类型，则替换ID
+            real_tid = _CLASS_MAP_MOVIE.get(extend["subtype"], "1")
+        elif tid == "2" and extend.get("subtype"):
+            # 连续剧的主分类是2，如果选了具体类型，则替换ID
+            real_tid = _SUB_CLASS_MAP_TV.get(extend["subtype"], "2")
+        elif tid == "3" and extend.get("class"):
+            # 综艺的主分类是3，类型是参数，不需要替换ID
+            real_tid = "3"
+        elif tid == "4" and extend.get("class"):
+            # 动漫的主分类是4，类型是参数，不需要替换ID
+            real_tid = "4"
+
+        # --- 12段 URL 构造 ---
+        # [TID] - [地区] - [排序] - [类型] - [语言] - [字母] - [空] - [空] - [页码] - [空] - [空] - [年份]
         seg = [""] * 12
-        seg[0] = str(tid)
+        seg[0] = real_tid
+        
         if extend.get("area"):
             seg[1] = urllib.parse.quote(extend["area"])
         if extend.get("sort"):
             seg[2] = extend["sort"]
+            
+        # 如果选了电影的子类型，因为我们已经替换了ID，所以参数3留空；否则填class（综艺/动漫用）
         if extend.get("class"):
             seg[3] = urllib.parse.quote(extend["class"])
+            
         if extend.get("lang"):
             seg[4] = urllib.parse.quote(extend["lang"])
-        # seg[5] 字母, seg[6][7] 保留
+        if extend.get("letter"):
+            seg[5] = urllib.parse.quote(extend["letter"])
+            
         seg[8] = str(page)
-        # seg[9][10] 保留
+        
         if extend.get("year"):
             seg[11] = str(extend["year"])
 
@@ -375,7 +409,6 @@ class Spider(Spider):
         return out
 
     def searchContent(self, key, quick, pg="1"):
-        # 搜索结果页有验证码, 用官方 suggest JSON 接口(单页返回全部匹配)
         videos = self._suggest(key)
         self.log("search '%s' -> %d 条" % (key, len(videos)))
         return {"list": videos, "page": 1, "pagecount": 1,
@@ -393,7 +426,6 @@ class Spider(Spider):
         if not html:
             return {"list": []}
 
-        # 标题
         name = ""
         m = _RE_H1.search(html)
         if m:
@@ -409,7 +441,6 @@ class Spider(Spider):
                     re.split(r"[-_|]", m.group(1))[0]).strip("《》 ")
         name = name or vod_id
 
-        # 封面
         pic = self.default_pic
         m = _RE_COVER.search(html)
         if m:
@@ -419,13 +450,11 @@ class Spider(Spider):
             if m:
                 pic = self._fix_url(m.group(1))
 
-        # 信息行: 逐项解析 title / body
         director = actor = year = area = type_name = remarks = ""
         content = ""
         for label, body in _RE_INFO_ITEM.findall(html):
             label = label.strip()
             if label in ("剧情", "简介"):
-                # 剧情 body 内含"收起/展开"链接, 清理掉
                 c = re.sub(r'<a[^>]*>.*?</a>', "", body, flags=re.S)
                 c = self._clean(c)
                 if c:
@@ -448,14 +477,10 @@ class Spider(Spider):
                     type_name = text
             elif label == "备注":
                 remarks = text
-            # 更新 / 集数 / 总集数 / 评分 不进入基础字段
 
-        # 年份规范化为 4 位
         my = re.search(r"(?:19|20)\d{2}", year)
         year = my.group(0) if my else ""
 
-        # aux 区: 按 vodshow 链接的参数段位置精确定位
-        # 12段: tid-地区-排序-类型-语言-字母---页码---年份
         maux = _RE_AUX.search(html)
         if maux:
             aux_types, aux_area = [], ""
@@ -475,14 +500,12 @@ class Spider(Spider):
                     if p[11] and not year:
                         year = p[11]
             if not type_name and aux_types:
-                # 去掉与主分类同名的大类标签, 只留具体子类型
                 subs = [x for x in aux_types if x not in
                         ("电影", "连续剧", "电视剧", "综艺", "动漫", "动画")]
                 type_name = ",".join(subs or aux_types)
             if not area and aux_area:
                 area = aux_area
 
-        # 剧情兜底
         if not content or content in ("内详", "暂无"):
             m = _RE_META_DESC.search(html)
             if m:
@@ -494,10 +517,7 @@ class Spider(Spider):
         else:
             vod_content = INTRO_PREFIX
 
-        # ===== 线路 + 剧集 =====
         tab_names = [self._clean(x) for x in _RE_TAB_ITEM.findall(html)]
-
-        # 以所有 glist-N 锚点切分, 边界为下一个 glist 或选集播放区结束
         heads = [(m.start(), int(m.group(1)))
                  for m in _RE_GLIST_HEAD.finditer(html)]
         groups = {}
@@ -519,7 +539,6 @@ class Spider(Spider):
             if eps:
                 groups[sid] = eps
 
-        # 线路名: tab 按文档顺序与 sid=1..N 对应
         play_from, play_url = [], []
         for idx, sid in enumerate(sorted(groups.keys())):
             line = (tab_names[idx] if idx < len(tab_names)
@@ -545,7 +564,6 @@ class Spider(Spider):
             "vod_play_url": "$$$".join(play_url),
         }]}
 
-    # ============ 播放 ============
     def playerContent(self, flag, id, vipFlags):
         play_page = id if str(id).startswith("http") else self._fix_url(id)
         now = int(time.time())
